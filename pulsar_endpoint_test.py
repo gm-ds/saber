@@ -16,7 +16,7 @@ SLEEP_TIME = 5
 # Logging set up
 def setup_logging():
     logging.basicConfig(
-        filename="/home/ubuntu/autotest_pulsar/testrun.log",
+        filename="/home/ubuntu/saber/testrun.log",
         #filename="/var/log/py_pulsar_test_telegraf.log",
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=logging.INFO,
@@ -84,7 +84,7 @@ def create_history(gi: GalaxyInstance, history_name: str, clean_histories=False)
 
 
 # Clean and Purge Histories from bioblend_test
-def clean_histories_files(gi: GalaxyInstance) -> None:
+def purge_histories(gi: GalaxyInstance) -> None:
     history_client = HistoryClient(gi)
     for history in history_client.get_histories():
         history_client.delete_history(history['id'], purge=True)
@@ -98,6 +98,12 @@ def upload_workflow(gi: GalaxyInstance, wf_path: str ) -> str:
 
 
 
+# Delete Workflows 
+def purge_workflow(gi: GalaxyInstance, workflow_id: str ) -> None:
+    gi.workflows.delete_workflow(workflow_id)
+
+
+
 # It returns a dict with the status
 def monitor_job_status(gi: GalaxyInstance, invocation_id: str, start_time: datetime, 
                       timeout: int, sleep_time: int = SLEEP_TIME) -> dict:
@@ -108,7 +114,6 @@ def monitor_job_status(gi: GalaxyInstance, invocation_id: str, start_time: datet
         elapsed_time = (datetime.now() - start_time).total_seconds()
         if elapsed_time + SLEEP_TIME > timeout:
             logging.info(f'Timeout {timeout}s expired.')
-            clean_histories_files(gi)
             return None
 
         # We don't do DDoSs in here.
@@ -127,6 +132,10 @@ def monitor_job_status(gi: GalaxyInstance, invocation_id: str, start_time: datet
         if job_state != current_job['state']:
             job_state = current_job['state']
             logging.info(f'    {job_state}')
+
+            if job_state == "error":
+                logging.error('The job encountered an error.')
+                return None
             
         # Continue monitoring
         if current_job['exit_code'] is None:
@@ -139,27 +148,26 @@ def monitor_job_status(gi: GalaxyInstance, invocation_id: str, start_time: datet
 def handle_job_completion(gi: GalaxyInstance, job: dict) -> int:
     # Cancel job if it's still running
     if job and job['state'] in ['new', 'queued', 'running']:
-        logging.info('Canceling test job.')
+        logging.info('Canceling test job, timeout.')
         gi.jobs.cancel_job(job['id'])
-        clean_histories_files(gi)
         return 1
         
     # Handle completion
     if job and job['exit_code'] == 0:
         logging.info('Test job succeeded')
-        clean_histories_files(gi)
+        gi.jobs.cancel_job(job['id'])
         return 0
         
     # Handle failure
-    exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
-    logging.info(f'Test job failed (exit_code: {exit_code})')
-    clean_histories_files(gi)
+    job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
+    logging.info(f'Test job failed (exit_code: {job_exit_code})')
+    gi.jobs.cancel_job(job['id'])
     return 1
 
 
 
 def execute_and_monitor_workflow(gi: GalaxyInstance, workflow_id: str, 
-                               workflow_input: dict, timeout: int, ID_history: str) -> int:
+                               workflow_input: dict, timeout: int, ID_history: str, Name_history: str) -> int:
     start_time = datetime.now()
     
     # Workflow invocation
@@ -167,7 +175,7 @@ def execute_and_monitor_workflow(gi: GalaxyInstance, workflow_id: str,
         workflow_id,
         inputs=workflow_input,
         history_id= ID_history,
-        history_name=hist_name # type: ignore
+        history_name= Name_history # type: ignore
 
     )
     logging.info(f'Invocation id: {invocation["id"]}')
@@ -180,7 +188,6 @@ def execute_and_monitor_workflow(gi: GalaxyInstance, workflow_id: str,
     
     # Handle timeout case
     if final_job_status is None:
-        clean_histories_files(gi)
         return 1
         
     # Handle job completion
@@ -192,7 +199,7 @@ def switch_pulsar(gi: GalaxyInstance, p_endpoint: str, url: str ) -> None:
     user_id = gi.users.get_current_user()['id']
     #prefs = gi.users.get_current_user()['preferences']['extra_user_preferences']
     prefs = gi.users.get_current_user().get('preferences', {}).get('extra_user_preferences', {})
-    new_prefs = prefs.copy()
+    new_prefs = json.loads(prefs).copy()
     new_prefs.update({'distributed_compute|remote_resources' : p_endpoint})
 
     if prefs != new_prefs:
@@ -200,11 +207,11 @@ def switch_pulsar(gi: GalaxyInstance, p_endpoint: str, url: str ) -> None:
         gi.users.update_user(user_id=user_id, user_data = new_prefs)
         logging.info(f"Testing pulsar endpoint {p_endpoint} "
                     f"using Galaxy server at {url}")
-        return None
 
-exit_code = 0
+
 
 def main():
+    exit_code = 0
     setup_logging()
     config = load_config()
     hist_name = config['hist_name']
@@ -214,7 +221,7 @@ def main():
     galaxy_instance = GalaxyInstance(url=config['galaxy_url'], key=config['galaxy_api_key'])
 
     try:
-        switch_pulsar(galaxy_instance, p_endpoint="None", url=config['galaxy_url'])
+        switch_pulsar(galaxy_instance, "None", url=config['galaxy_url'])
         id_hist = create_history(galaxy_instance, hist_name)
         wfid = upload_workflow(galaxy_instance, wf_path)
         input = upload_and_build_data(galaxy_instance, id_hist, wfid, inputs_path)
@@ -224,18 +231,20 @@ def main():
             exit_code = exit_code + execute_and_monitor_workflow(
                 gi = galaxy_instance,  # Fixed variable reference
                 workflow_id = wfid,
-                worflow_input = input,
+                workflow_input = input,
                 timeout = config['timeout'],
-                ID_history = id_hist
+                ID_history = id_hist,
+                Name_history= hist_name
             )
-
         sys.exit(exit_code)
 
     except KeyboardInterrupt:
-        print("\nInterrupted by user, cleaning up")
-        clean_histories(galaxy_instance)
         logging.info("Test interrupted")
         print("\nScript terminated")
+    
+    finally:
+        purge_histories(galaxy_instance)
+        purge_workflow(galaxy_instance, wfid)
 
 
 if __name__ == '__main__':
