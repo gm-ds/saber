@@ -5,6 +5,7 @@
 
 ## TODO
 - Switch to yaml config file to not rely on input.json
-- Improve logging 
+- Improve logging
+- Multiple Job Support
 - Telegraf support
 - Comment and Docs
