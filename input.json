@@ -1,0 +1,6 @@
+{
+    "1_reads": {
+    "url":"https://raw.githubusercontent.com/Laniakea-elixir-it/general-reads-hg19/main/input_mate1.fastq",
+    "file_type":"fastq"
+}
+}
