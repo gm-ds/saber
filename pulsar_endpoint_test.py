@@ -2,7 +2,6 @@
 
 import sys
 import time
-import configparser
 import logging
 import json
 import yaml
