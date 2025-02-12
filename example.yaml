@@ -1,5 +1,5 @@
 ---
-#Change the name of the file to pulsar_test_config.yaml
+#Change the name of the file to pulsar_test_conf.yaml
 galaxy_instance:
   name_example:
     url: change me
