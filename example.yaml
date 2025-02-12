@@ -11,8 +11,8 @@ usegalaxy_instances:
     default_compute_id: "None"
 ga_path: /absolute/path
 data_inputs:
-  - label: change me # Change this key name accordingly to the workflow file
+  label_example_name: # Change this key name accordingly to the workflow file
     url: change me
     file_type: change me
 log_path: /absolute/path/file.log
-
+timeout: 1200
