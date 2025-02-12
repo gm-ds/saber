@@ -1,7 +1,7 @@
 ---
 #Change the name of the file to pulsar_test_conf.yaml
-galaxy_instance:
-  name_example:
+usegalaxy_instances:
+  - name: example
     url: change me
     mail: changeme
     api: canbeleftempty #can be left empty, not for now though
@@ -11,7 +11,7 @@ galaxy_instance:
     default_compute_id: "None"
 ga_path: /absolute/path
 data_inputs:
-  input_name0: # Change this key name accordingly to the workflow file
+  - label: change me # Change this key name accordingly to the workflow file
     url: change me
     file_type: change me
 log_path: /absolute/path/file.log
