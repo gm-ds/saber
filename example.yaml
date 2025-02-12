@@ -1,0 +1,18 @@
+---
+#Change the name of the file to pulsar_test_conf.yaml
+usegalaxy_instances:
+  - name: example
+    url: change me
+    mail: changeme
+    api: canbeleftempty #can be left empty, not for now though
+    endpoints:
+      - changeme
+      - changeme
+    default_compute_id: "None"
+ga_path: /absolute/path
+data_inputs:
+  label_example_name: # Change this key name accordingly to the workflow file
+    url: change me
+    file_type: change me
+log_path: /absolute/path/file.log
+timeout: 1200
