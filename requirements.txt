@@ -1,0 +1,2 @@
+pyyaml >= 6.0.2
+bioblend >= 1.4.0
