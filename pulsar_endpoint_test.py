@@ -5,6 +5,7 @@ import time
 import configparser
 import logging
 import json
+import yaml
 import bioblend
 from datetime import datetime
 from bioblend.galaxy import GalaxyInstance
@@ -12,43 +13,37 @@ from bioblend.galaxy.histories import HistoryClient
 
 
 SLEEP_TIME = 5
+# LOG_CONTEXT = {}
+
 
 # Logging set up
-def setup_logging():
+def setup_logging(log_path: str):
     logging.basicConfig(
-        filename="/home/ubuntu/saber/testrun.log",
-        #filename="/var/log/py_pulsar_test_telegraf.log",
+        filename=log_path,
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=logging.INFO,
         datefmt='%Y-%m-%d %H:%M:%S'
     )
+# def update_context(**kwargs)
 
 
-
-# Loading Config using json list
-def load_config(config_path='pulsar_test.ini'):
+# Loading Config using a YAML
+def load_config(config_path='pulsar_test_conf.yaml'):
     try:
         with open(config_path, 'r') as f:
-            config = configparser.ConfigParser()
-            config.read_file(f)
-            
-        return {
-            'galaxy_url': config['DEFAULT']['GalaxyUrl'],
-            'galaxy_api_key': config['DEFAULT']['GalaxyAPIKey'],
-            'workflow_path': config['DEFAULT']['WorkflowPath'],
-            'workflow_input_path': config['DEFAULT']['WorkflowInput'],
-            'hist_name' : config['DEFAULT']['HistoryName'],
-            'pulsar_endpoint': json.loads(config['DEFAULT']['PulsarEndpoint']),
-            'timeout': int(config['DEFAULT']['Timeout'])
-        }
+            return yaml.safe_load(f)
+        
     except (FileNotFoundError, PermissionError) as e:
-        logging.error(f"Error reading {config_path}: {e}")
+        logging.critical(f"Error reading {config_path}: {e}")
+        sys.exit(1)
+
+    except yaml.YAMLError as e:
+        logging.critical(f"YAML parsing error: {e}")
         sys.exit(1)
 
 # Upload necessary data
-def upload_and_build_data(gi, history_id: str, workflow_id: str, inputs_path: str) -> dict:
-    with open(inputs_path, 'r') as f:
-        inputs_dict = json.load(f)
+def upload_and_build_data(gi, history_id: str, workflow_id: str, inputs_data: dict) -> dict:
+    inputs_dict = inputs_data
     data = dict()
     for file_name, file_options in inputs_dict.items():
         file_url = file_options['url']
@@ -71,7 +66,7 @@ def wait_for_dataset(gi: GalaxyInstance, history_id: str) -> None:
         dataset_client.wait_for_dataset(dataset['id'])
 # TODO: Different timeout for uploading! 
 
-def create_history(gi: GalaxyInstance, history_name: str, clean_histories=False) -> str:
+def create_history(gi: GalaxyInstance, history_name: str = "Pulsar Endpoints Test", clean_histories=False) -> str:
     # Delete all histories to ensure there's enough free space
     if clean_histories:
         history_client = bioblend.galaxy.histories.HistoryClient(gi)
@@ -112,14 +107,14 @@ def monitor_job_status(gi: GalaxyInstance, invocation_id: str, start_time: datet
     while True:
         # Check timeout
         elapsed_time = (datetime.now() - start_time).total_seconds()
-        if elapsed_time + SLEEP_TIME > timeout:
+        if elapsed_time + sleep_time > timeout:
             logging.info(f'Timeout {timeout}s expired.')
             return None
 
         # We don't do DDoSs in here.
         # Very mindfull
         # Very demure    
-        time.sleep(SLEEP_TIME)
+        time.sleep(sleep_time)
         
         # Get job status
         jobs = gi.jobs.get_jobs(invocation_id=invocation_id)
@@ -167,7 +162,7 @@ def handle_job_completion(gi: GalaxyInstance, job: dict) -> int:
 
 
 def execute_and_monitor_workflow(gi: GalaxyInstance, workflow_id: str, 
-                               workflow_input: dict, timeout: int, ID_history: str, Name_history: str) -> int:
+                               workflow_input: dict, timeout: int, ID_history: str) -> int:
     start_time = datetime.now()
     
     # Workflow invocation
@@ -175,10 +170,10 @@ def execute_and_monitor_workflow(gi: GalaxyInstance, workflow_id: str,
         workflow_id,
         inputs=workflow_input,
         history_id= ID_history,
-        history_name= Name_history # type: ignore
+        history_name= "Compute testing"
 
     )
-    logging.info(f'Invocation id: {invocation["id"]}')
+    logging.info( f'Invocation id: {invocation["id"]}')
     
     # Monitor the job using the previous function!
     logging.info('Waiting until test job finishes. Current state:')
@@ -195,56 +190,73 @@ def execute_and_monitor_workflow(gi: GalaxyInstance, workflow_id: str,
 
 
 # Pretty sure this is need some fixing
-def switch_pulsar(gi: GalaxyInstance, p_endpoint: str, url: str ) -> None:
+def switch_pulsar(gi: GalaxyInstance, p_endpoint: str, name: str ) -> None:
     user_id = gi.users.get_current_user()['id']
     #prefs = gi.users.get_current_user()['preferences']['extra_user_preferences']
     prefs = gi.users.get_current_user().get('preferences', {}).get('extra_user_preferences', {})
-    new_prefs = json.loads(prefs).copy()
+    new_prefs = json.loads(prefs).copy() # TODO: find a workaround to not use the json library only for this bit
     new_prefs.update({'distributed_compute|remote_resources' : p_endpoint})
 
     if prefs != new_prefs:
         logging.info('Updating pulsar endpoint in user preferences')
         gi.users.update_user(user_id=user_id, user_data = new_prefs)
         logging.info(f"Testing pulsar endpoint {p_endpoint} "
-                    f"using Galaxy server at {url}")
+                    f"from {name}")
 
+
+
+
+def priority_vars(instance: dict, key_instance: str, conf: dict):
+    if key_instance in instance and instance[key_instance] is not None:
+        return instance[key_instance]
+    return conf.get(key_instance)
 
 
 def main():
     exit_code = 0
-    setup_logging()
     config = load_config()
-    hist_name = config['hist_name']
-    wf_path = config['workflow_path']
-    inputs_path = config['workflow_input_path']
+    useg = ''
 
-    galaxy_instance = GalaxyInstance(url=config['galaxy_url'], key=config['galaxy_api_key'])
+    def pvars(key: str):
+        return priority_vars(useg, key, config)
 
-    try:
-        switch_pulsar(galaxy_instance, "None", url=config['galaxy_url'])
-        id_hist = create_history(galaxy_instance, hist_name)
-        wfid = upload_workflow(galaxy_instance, wf_path)
-        input = upload_and_build_data(galaxy_instance, id_hist, wfid, inputs_path)
+    for i in range(len(config['usegalaxy_instances'])):
+        try:    
 
-        for pe in config['pulsar_endpoint']:
-            switch_pulsar(galaxy_instance, pe, url=config['galaxy_url'])
-            exit_code = exit_code + execute_and_monitor_workflow(
-                gi = galaxy_instance,  # Fixed variable reference
-                workflow_id = wfid,
-                workflow_input = input,
-                timeout = config['timeout'],
-                ID_history = id_hist,
-                Name_history= hist_name
-            )
-        sys.exit(exit_code)
+            useg = config['usegalaxy_instances'][i]
+            setup_logging(pvars('log_path'))
+            wf_path = pvars('ga_path')
+            inputs_data = pvars('data_inputs')
 
-    except KeyboardInterrupt:
-        logging.info("Test interrupted")
-        print("\nScript terminated")
+            galaxy_instance = GalaxyInstance(url=useg['url'], key=useg['api'])
+
+            switch_pulsar(galaxy_instance, useg['default_compute_id'], name=useg['name'])
+            id_hist = create_history(galaxy_instance)
+            wfid = upload_workflow(galaxy_instance, wf_path)
+            input = upload_and_build_data(galaxy_instance, id_hist, wfid, inputs_data)
+
+            for pe in useg['endpoints']:
+                switch_pulsar(galaxy_instance, pe, name=useg['name'])
+                exit_code = exit_code + execute_and_monitor_workflow(
+                    gi = galaxy_instance,  # Fixed variable reference
+                    workflow_id = wfid,
+                    workflow_input = input,
+                    timeout = pvars('timeout'),
+                    ID_history = id_hist
+                )
+            purge_histories(galaxy_instance)
+            purge_workflow(galaxy_instance, wfid)
+
+        except KeyboardInterrupt:
+            logging.info("Test interrupted")
+            print("\nScript terminated")
+
+        finally:
+            purge_histories(galaxy_instance)
+            purge_workflow(galaxy_instance, wfid)
+            logging.info("Test completed")
     
-    finally:
-        purge_histories(galaxy_instance)
-        purge_workflow(galaxy_instance, wfid)
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':
