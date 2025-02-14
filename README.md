@@ -9,7 +9,7 @@ All variables under `usegalaxy_instances` will overwrite upper level values, lea
 A workflow file is still needed.
 
 ## Logs
-SABER can be run as root, in that case the logs can be found in `var/log/saber/saber.log` otherwhise in `~/.local/share/state/saber/log/saber.log`. For the path in other platforms check this [documentation](https://pypi.org/project/appdirs/).
+SABER can be run as root, in that case the logs can be found in `var/log/saber/saber.log` otherwhise in `~/.local/state/saber/log/saber.log`. For the path in other platforms check this [documentation](https://pypi.org/project/appdirs/).
 
 A brief log example:
 
