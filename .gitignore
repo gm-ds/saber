@@ -1,12 +1,11 @@
-#Ignore all ini and yaml files
+#Ignore all yaml files
 *.ini
 *.yaml
 *.yml
 
 # But do not ignore examples configs
-!example.ini
-!example.yml
-!example.yaml
+!example_settings.yml
+!example_settings.yaml
 
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
