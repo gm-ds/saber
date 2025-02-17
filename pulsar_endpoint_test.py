@@ -3,8 +3,7 @@
 import sys
 import os
 import time
-import logging
-from platformdirs import user_log_dir
+from src.logger import CustomLogger, ContextFilter
 import json
 import yaml
 import bioblend
@@ -14,74 +13,7 @@ from bioblend.galaxy.histories import HistoryClient
 
 # Global Variables
 SLEEP_TIME = 5
-LOG_CONTEXT = {
-    'GalaxyInstance' : 'None',
-    'Endpoint' : 'Default'
-}
-F = ''
 logger = ''
-
-# Filters, from logging docs:
-class ContextFilter(logging.Filter):
-    """
-    This is a filter which injects contextual dynbamic information into the log.
-
-    In this case we are going to inject the values of a global variable that
-    is updated as the test proceeds 
-    """
-
-    def filter(self, record):
-        record.galaxy = LOG_CONTEXT.get('GalaxyInstance', 'None') #.upper()
-        record.pulsar = LOG_CONTEXT.get('Endpoint', 'Default') #.upper()
-        return True
-
-
-
-# Logging set up
-def setup_logging(log_name: str = "saber"):
-    global logger, F
-    log_name = f"{log_name}.log"
-    if os.geteuid() == 0:
-        log_dir = "/var/log/saber"
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = f"/var/log/saber/{log_name}"
-    else:
-        log_dir = user_log_dir("saber")
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f"{log_name}")
-
-    #Setting up handler for rotating logs and custom format
-    handler = logging.handlers.TimedRotatingFileHandler(log_file, when="midnight", backupCount=7)
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(galaxy)s@%(pulsar)s] %(message)s')
-    handler.setFormatter(formatter)
-
-    logging.basicConfig(
-        handlers=[handler],
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    # Setting up filters
-    logger = logging.getLogger()
-
-    if not any(isinstance(f, ContextFilter) for f in logger.filters):
-        F = ContextFilter()
-        logger.addFilter(F)
-
-
-
-def update_context(instance_name: str = "None", endpoint: str = "Default"):
-    global LOG_CONTEXT, F, logger
-    
-    LOG_CONTEXT['GalaxyInstance'] = instance_name or "None"
-    LOG_CONTEXT['Endpoint'] = endpoint or "Default"
-
-    logger = logging.getLogger()
-# Filters are updated
-    if not any(isinstance(f, ContextFilter) for f in logger.filters):
-        F = ContextFilter()
-        logger.addFilter(F)
-
-
 
 
 # Loading Config using a YAML file
@@ -304,7 +236,7 @@ def switch_pulsar(gi: GalaxyInstance, p_endpoint: str, name: str ) -> None:
         gi.users.update_user(user_id=user_id, user_data = new_prefs)
         if p_endpoint == "None":
             p_endpoint = "Default"
-        update_context(name, p_endpoint)
+        logger.update_log_context( name, p_endpoint)
         logger.info(f"Testing pulsar endpoint {p_endpoint} "
                     f"from {name} instance")
 
@@ -317,12 +249,10 @@ def priority_vars(instance: dict, key_instance: str, conf: dict):
 
 
 def main():
-    global F, logger, LOG_CONTEXT
+    global logger
     exit_code = 0
     useg = ''
-
-    setup_logging()
-    update_context()
+    logger = CustomLogger()
     logger.info("Starting...")
     config = load_config()
 
@@ -337,7 +267,7 @@ def main():
             inputs_data = pvars('data_inputs')
 
             galaxy_instance = GalaxyInstance(url=useg['url'], key=useg['api'])
-            update_context(useg['name'], 'TBD')
+            logger.update_log_context(useg['name'], 'TBD')
 
             switch_pulsar(galaxy_instance, useg['default_compute_id'], name=useg['name'])
             id_hist = create_history(galaxy_instance)
@@ -356,7 +286,7 @@ def main():
             logger.info("Cleaning Up...")
             purge_histories(galaxy_instance)
             purge_workflow(galaxy_instance, wfid)
-            logging.info("Test completed")
+            logger.info("Test completed")
 
         except KeyboardInterrupt:
             logger.warning("Test interrupted")
