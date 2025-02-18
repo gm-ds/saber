@@ -34,7 +34,7 @@ def load_config(config_path='configs/settings.yaml'):
 
 
 # Upload necessary data
-def upload_and_build_data(gi, history_id: str, workflow_id: str, inputs_data: dict, maxwait: int = 12000) -> dict:
+def upload_and_build_data(gi, history_id: str, workflow_id: str, inputs_data: dict, maxwait: int = 12000, interval: int = 5) -> dict:
     if not isinstance(maxwait, int):
         maxwait = 12000
     inputs_dict = inputs_data
@@ -50,7 +50,8 @@ def upload_and_build_data(gi, history_id: str, workflow_id: str, inputs_data: di
         data[wf_input] = {'id':upload_id, 'src':'hda'}
 
     # Wait for dataset
-    wait_for_dataset(gi, history_id, start_time, maxwait)
+    logger.info("Waiting for datasets...")
+    wait_for_dataset(gi, history_id, start_time, maxwait, interval)
 
     return data
 
@@ -58,14 +59,13 @@ def upload_and_build_data(gi, history_id: str, workflow_id: str, inputs_data: di
 
 # Manually wait for the dataset
 # for improved logging with custom format
-def wait_for_dataset(gi: GalaxyInstance, history_id: str, start_time: datetime, maxtime: int = 12000) -> None:
+def wait_for_dataset(gi: GalaxyInstance, history_id: str, start_time: datetime, maxtime: int = 12000, interval: int = 5) -> None:
     dataset_client =  bioblend.galaxy.datasets.DatasetClient(gi)
     all_datasets = dataset_client.get_datasets(history_id=history_id)
     
     for dataset in all_datasets:
         dataset_id = dataset['id']
         prev_state = None
-        interval = 10
         
         while True:
 
@@ -78,13 +78,12 @@ def wait_for_dataset(gi: GalaxyInstance, history_id: str, start_time: datetime, 
             dataset_info = dataset_client.show_dataset(dataset_id)
             state = dataset_info['state']
             
-            if state != prev_state:
-                if state in {'error', 'failed'}:
-                    logger.error(f"Dataset {dataset_id}: State changed to {state}")
+            if state in {"ok", "empty", "error", "discarded", "failed_metadata"}:
+                if state != "ok":
+                    logger.warning(f"Dataset {dataset_id} is in terminal state {state}")
                     logger.error(f"Upload of Dataset {dataset_id} failed")
                     break
-                logger.info(f"Dataset {dataset_id}: State changed to {state}")
-                prev_state = state
+                logger.info(f"Dataset {dataset_id} is in non-terminal state {state}")
 
             if state in {'ok', 'error', 'failed'}:
                 logger.info(f'Upload elapsed time: {elapsed_time}s')
@@ -293,7 +292,11 @@ def main():
             purge_histories(galaxy_instance)
             purge_workflow(galaxy_instance, wfid)
             logger.info("Clean-up terminated")
+            print("\n")
             sys.exit(exit_code)
+
+        except bioblend.TimeoutException:
+            logger.info("Timeout error")    
 
         except Exception as e:
             logger.warning(f"Error: {e}")
