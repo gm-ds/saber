@@ -53,7 +53,7 @@ class CustomLogger():
 
         #Setting up handler for rotating logs and custom format
         handler = logging.handlers.TimedRotatingFileHandler(log_file, when="midnight", backupCount=7)
-        formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(galaxy)s@%(pulsar)s] %(message)s','%Y-%m-%d %H:%M:%S')
+        formatter = logging.Formatter('%(asctime)s %(name)s: %(levelname)-8s [%(galaxy)s@%(pulsar)s] %(message)s','%Y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
 
         # Set logger instancelog_context
