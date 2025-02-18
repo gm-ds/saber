@@ -70,6 +70,17 @@ class CustomLogger():
 
         self._setup_syslog()
 
+        # Attach BioBlend logger to use the same handlers
+        bioblend_logger = logging.getLogger("bioblend")
+        bioblend_logger.setLevel(self._logger.level)
+        for handler in self._logger.handlers:
+            if not isinstance(handler, logging.handlers.SysLogHandler):
+                handler.setFormatter(formatter)
+                if handler not in bioblend_logger.handlers:
+                    bioblend_logger.addHandler(handler)
+
+        bioblend_logger.propagate = False
+
 
 
         # Setup syslog handler with platform-specific configuration
@@ -84,7 +95,8 @@ class CustomLogger():
                 address=syslog_address,
                 facility=logging.handlers.SysLogHandler.LOG_USER
             )
-
+            syslog_formatter = logging.Formatter('%(name)s[%(process)d]: %(levelname)-8s [%(galaxy)s@%(pulsar)s] %(message)s','%Y-%m-%d %H:%M:%S')
+            syslog_handler.setFormatter(syslog_formatter)
             self._logger.addHandler(syslog_handler)
 
         except Exception as e:
