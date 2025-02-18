@@ -2,19 +2,17 @@ import time
 from src.logger import CustomLogger
 import json
 from datetime import datetime
+from bioblend.galaxy import datasets
 from bioblend.galaxy import GalaxyInstance
 from bioblend.galaxy.histories import HistoryClient
 
-# Global Variables
-SLEEP_TIME = 5
-
 
 class GalaxyTest():
-    def __init__(self, url: str, key: str, config: dict = None, loggr=None):
+    def __init__(self, url: str, key: str, config: dict = None, class_logger = None):
         #Initialize GalaxyInstance
-        self.logger = loggr if not isinstance(self.logger, CustomLogger) else  CustomLogger()
+        self.logger = class_logger if not isinstance(class_logger, CustomLogger) else  CustomLogger()
         self.gi = GalaxyInstance(url, key)
-        self.logger.update_log_context(url, "TBD")
+        self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
 
        # Default configuration
@@ -26,8 +24,8 @@ class GalaxyTest():
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
-        
-        
+
+
     # Upload necessary data
     def upload_and_build_data(self, history_id: str, workflow_id: str, 
                               inputs_data: dict = None, maxwait: int = None, 
@@ -47,7 +45,6 @@ class GalaxyTest():
         if local: self.switch_pulsar(self.config['default_compute_id'], self.config['name'])
         inputs_dict = inputs_data
         data = dict()
-        start_time = datetime.now()
         self.logger.info(f"Uploading and building Datasets")
         for file_name, file_options in inputs_dict.items():
             file_url = file_options['url']
@@ -59,14 +56,16 @@ class GalaxyTest():
 
         # Wait for dataset
         self.logger.info("Waiting for datasets...")
-        self._wait_for_dataset(history_id, start_time, maxwait, interval)
+        self._wait_for_dataset(history_id, maxwait, interval)
 
         return data
 
     # Manually wait for the dataset
     # for improved logging with custom format
-    def _wait_for_dataset(self, history_id: str, start_time: datetime, maxtime: int = 12000, interval: int = 5) -> bool:
-        dataset_client =  self.gi.datasets.DatasetClient(self.gi)
+    def _wait_for_dataset(self, history_id: str, maxtime: int = None, interval: int = 5) -> bool:
+        if maxtime is None:
+            maxtime = self.config.get('maxwait', 12000)
+        dataset_client =  datasets.DatasetClient(self.gi)
         all_datasets = dataset_client.get_datasets(history_id=history_id)
         
         def check_dataset_ready():
@@ -138,7 +137,7 @@ class GalaxyTest():
 
 
     # It returns a dict with the status
-    def _monitor_job_status(self, invocation_id: str, start_time: datetime, 
+    def _monitor_job_status(self, invocation_id: str, 
                         timeout: int = None, sleep_time: int = None) -> dict:
         if sleep_time is None:
             sleep_time = self.config.get('sleep_time', 5)
@@ -146,27 +145,23 @@ class GalaxyTest():
         if timeout is None:
             timeout = self.config.get('timeout', 12000)
 
-        job_state = ''
         def job_completed():
-            
             # Get job status
             jobs = self.gi.jobs.get_jobs(invocation_id=invocation_id)
             if not jobs:
                 return False
                 
             current_job = jobs[0]
-            
-            # Log any state changes
-            if job_state != current_job['state']:
-                job_state = current_job['state']
-                self.logger.info(f'    {job_state}')
+            job_state = current_job['state']
+            job_exit_code = current_job.get('exit_code')
+            self.logger.info(f'    {job_state}')
 
             if job_state == "error":
-                self.logger.info('The job encountered an error.')
+                self.logger.info(f'The job encountered an error.')
                 return True
                 
             # Continue monitoring
-            if current_job['exit_code'] is not None:
+            if job_state == "ok" and job_exit_code is not None:
                 return True
             return False
         
@@ -201,7 +196,6 @@ class GalaxyTest():
 
     def execute_and_monitor_workflow(self, workflow_id: str, 
                                 workflow_input: dict, ID_history: str, timeout: int = None,) -> int:
-        start_time = datetime.now()
 
         if timeout is None:
             timeout = self.config.get('timeout', 12000)        
@@ -218,7 +212,7 @@ class GalaxyTest():
         # Monitor the job using the previous function!
         self.logger.info('Waiting until test job finishes. Current state:')
         final_job_status = self._monitor_job_status(
-             invocation['id'], start_time, timeout
+             invocation['id'], timeout
         )
         
         # Handle timeout case
@@ -231,7 +225,9 @@ class GalaxyTest():
 
 
     # Pretty sure this is need some fixing
-    def switch_pulsar(self, p_endpoint: str, name: str ) -> None:
+    def switch_pulsar(self, p_endpoint: str, name: str = None ) -> None:
+        if name is None:
+            name = self.config['name']
         user_id = self.gi.users.get_current_user()['id']
         prefs = self.gi.users.get_current_user().get('preferences', {}).get('extra_user_preferences', {})
         new_prefs = json.loads(prefs).copy() # TODO: find a workaround to not use the json library only for this bit
