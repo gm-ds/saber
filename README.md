@@ -21,10 +21,12 @@ A brief log example:
 The Galaxy server being currently tested is displayed in brackets along with the pulsar endpoint. The `TBD` values is used during Galaxy Instance initialization. The `Default` endpoint correspond to the local compute of the server, it is used during dataset uploads.
 
 ## TODO
-- REFACTOR
+- argparse
+- HTML report
 - Multiple Job Support
 - Improve errors handling
 - InfluxDB support
 - Comments and Docs
 - ~~Switch to yaml config file to not rely on input.json~~
 - ~~Improve logging~~
+- ~~REFACTOR~~
