@@ -20,7 +20,7 @@ class GalaxyTest():
             "sleep_time": 5,
             "maxwait": 12000,
             "interval": 5,
-            "timeout": 2400
+            "timeout": 12000
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
