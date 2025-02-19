@@ -3,31 +3,8 @@
 import sys
 from src.logger import CustomLogger
 from src.bioblend_testjobs import GalaxyTest
-import yaml
+from src.secure_config import SecureConfig
 
-
-logger = ''
-
-# Loading Config using a YAML file
-def load_config(config_path='configs/settings.yaml'):
-    try:
-        with open(config_path, 'r') as f:
-            logger.info(f"Loading Config")
-            return yaml.safe_load(f)
-        
-    except (FileNotFoundError, PermissionError) as e:
-        logger.critical(f"Error reading {config_path}: {e}")
-        sys.exit(1)
-
-    except yaml.YAMLError as e:
-        logger.critical(f"YAML parsing error: {e}")
-        sys.exit(1)
-
-
-def priority_vars(instance: dict, key_instance: str, conf: dict):
-    if key_instance in instance and instance[key_instance] is not None:
-        return instance[key_instance]
-    return conf.get(key_instance)
 
 
 def main():
@@ -36,10 +13,10 @@ def main():
     useg = ''
     logger = CustomLogger()
     logger.info("Starting...")
-    config = load_config()
+    safe_config = SecureConfig('saber')
+    safe_config.initialize_encryption('place_holder')
+    config = safe_config.load_config()
 
-    def pvars(key: str):
-        return priority_vars(useg, key, config)
 
     for i in range(len(config['usegalaxy_instances'])):
 
@@ -47,8 +24,6 @@ def main():
         copyconf = config.copy()
         copyconf.pop("usegalaxy_instances", None)
         useg.update(useg | copyconf )
-        wf_path = pvars('ga_path')
-
 
         galaxy_instance = GalaxyTest(useg['url'], useg['api'], useg, logger)
 
