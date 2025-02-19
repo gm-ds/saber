@@ -211,18 +211,20 @@ class SecureConfig:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
         if not self.config_path.exists():
-            return {}
-            
-        with open(self.config_path, 'rb') as f:
-            data = f.read()
-            
-        if self.is_encrypted():
-            decrypted_data = self.decrypt_data(data)
-            return yaml.safe_load(decrypted_data)
-        
-        return yaml.safe_load(data)
-        
+            raise ValueError(f"File does not exists. Check the following path: {self.config_path}")
 
+        try:     
+            with open(self.config_path, 'rb') as f:
+                data = f.read()
+                
+            if self.is_encrypted():
+                decrypted_data = self.decrypt_data(data)
+                return yaml.safe_load(decrypted_data)
+            
+            return yaml.safe_load(data)
+        except PermissionError as e:
+            raise ValueError(f"Cannot access configuration file: {e}") from e
+        
 
     def _get_editor_command(self) -> str:
         if os.name == 'nt':  # Windows, why do I bother??
@@ -264,7 +266,7 @@ class SecureConfig:
         
         return editor
     
-    
+
 
     def edit_config(self):
         current_config = self.load_config()

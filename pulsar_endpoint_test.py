@@ -8,15 +8,20 @@ from src.secure_config import SecureConfig
 
 
 def main():
-    global logger
     exit_code = 0
     useg = ''
     logger = CustomLogger()
     logger.info("Starting...")
-    safe_config = SecureConfig('saber')
-    safe_config.initialize_encryption('place_holder')
-    config = safe_config.load_config()
 
+    try:
+        safe_config = SecureConfig('saber')
+        safe_config.initialize_encryption('place_holder')
+        
+    except (ValueError, PermissionError) as e:
+        logger.error(f"An error occurred: {e}")
+        sys.exit(1)
+
+    config = safe_config.load_config()
 
     for i in range(len(config['usegalaxy_instances'])):
 
