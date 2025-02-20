@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 class SecureConfig:
     def __init__(self, tool_name: str, config_path: Path = None):
         self.tool_name = tool_name
-        self.config_path = config_path if config_path else self._get_default_config_path()
+        self.config_path = Path(config_path) if config_path else self._get_default_config_path()
         self._fernet: Optional[Fernet] = None
 
 
@@ -34,8 +34,11 @@ class SecureConfig:
         config_dir.mkdir(parents=True, exist_ok=True)
         if os.name == 'posix':
             os.chmod(config_dir, stat.S_IRWXU)
-
-        return config_dir / 'settings.yaml'
+        settings_path = Path.joinpath(config_dir, 'settings.yaml')
+        if settings_path.is_file():
+            return settings_path
+        raise SystemExit(f"settings.yaml does not exists, please check {config_dir}.\
+                         \nOr make a new one with \'saber -x\' and \'saber -e PATH\'")
 
 
 

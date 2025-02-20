@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import sys
+from src.globals import TOOL_NAME, PATH_EXIT
 from src.logger import CustomLogger
-from src.bioblend_testjobs import GalaxyTest
 from src.secure_config import SecureConfig
+from src.bioblend_testjobs import GalaxyTest
 
 
 
@@ -14,12 +15,12 @@ def main():
     logger.info("Starting...")
 
     try:
-        safe_config = SecureConfig('saber')
+        safe_config = SecureConfig(TOOL_NAME)
         safe_config.initialize_encryption('place_holder')
         
     except (ValueError, PermissionError) as e:
         logger.error(f"An error occurred: {e}")
-        sys.exit(1)
+        sys.exit(PATH_EXIT)
 
     config = safe_config.load_config()
 
@@ -30,7 +31,8 @@ def main():
         copyconf.pop("usegalaxy_instances", None)
         useg.update(useg | copyconf )
 
-        galaxy_instance = GalaxyTest(useg['url'], useg['api'], useg, logger)
+        galaxy_instance = GalaxyTest(useg['url'], useg['api'], useg.get('email', None),
+                                      useg.get('password', None), useg, logger)
 
         try:
             id_hist = galaxy_instance.create_history()

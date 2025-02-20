@@ -1,6 +1,7 @@
 import time
 import json
 from pathlib import Path
+from src.globals import API_EXIT, PATH_EXIT
 from datetime import datetime
 from src.logger import CustomLogger
 from bioblend.galaxy import datasets
@@ -9,10 +10,11 @@ from bioblend.galaxy.histories import HistoryClient
 
 
 class GalaxyTest():
-    def __init__(self, url: str, key: str, config: dict = None, class_logger = None):
+    def __init__(self, url: str, key: str, email: str = None, gpassword: str = None, 
+                 config: dict = None, class_logger = None):
         #Initialize GalaxyInstance
         self.logger = class_logger if not isinstance(class_logger, CustomLogger) else  CustomLogger()
-        self.gi = GalaxyInstance(url, key)
+        self.gi = GalaxyInstance(url, email, gpassword) if ((email is not None) and (gpassword is not None)) else GalaxyInstance(url, key)
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
 
@@ -125,15 +127,20 @@ class GalaxyTest():
         if wf_path is None:
             wf_path = Path(self.config['ga_path'])
 
+        wf_path = wf_path.expanduser() if not wf_path.is_absolute() else wf_path
+
         if not wf_path.is_absolute():
-            if wf_path.match('~/*'):
-                wf_path = wf_path.expanduser()
-            wf_path = Path.joinpath(config_path.parent, wf_path).resolve()
+            wf_path = config_path.parent / wf_path
+        
+        wf_path = wf_path.resolve()
 
         if wf_path.exists():
             wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
-            self.logger.info(f'Uploading Workflow, local path: {str(wf_path)}')
+            self.logger.info(f'Uploading Workflow, local path: {wf_path}')
             return wf['id']
+        
+        self.logger.error(f"Workflow path does not exist: {wf_path}")
+        raise SystemExit(PATH_EXIT)
 
 
 
