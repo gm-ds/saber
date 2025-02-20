@@ -1,7 +1,8 @@
 import time
-from src.logger import CustomLogger
 import json
+from pathlib import Path
 from datetime import datetime
+from src.logger import CustomLogger
 from bioblend.galaxy import datasets
 from bioblend.galaxy import GalaxyInstance
 from bioblend.galaxy.histories import HistoryClient
@@ -119,13 +120,20 @@ class GalaxyTest():
 
 
     # Upload Workflow if old one is no more and get workflow id
-    def upload_workflow(self, wf_path: str = None ) -> str:
+    # TODO: file error handling
+    def upload_workflow(self, config_path: Path, wf_path: str = None) -> str:
         if wf_path is None:
-            wf_path = self.config['ga_path']
-    
-        wf = self.gi.workflows.import_workflow_from_local_path(wf_path)
-        self.logger.info(f'Uploading Workflow, local path: {wf_path}')
-        return wf['id']
+            wf_path = Path(self.config['ga_path'])
+
+        if not wf_path.is_absolute():
+            if wf_path.match('~/*'):
+                wf_path = wf_path.expanduser()
+            wf_path = Path.joinpath(config_path.parent, wf_path).resolve()
+
+        if wf_path.exists():
+            wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
+            self.logger.info(f'Uploading Workflow, local path: {str(wf_path)}')
+            return wf['id']
 
 
 

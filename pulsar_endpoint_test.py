@@ -34,7 +34,7 @@ def main():
 
         try:
             id_hist = galaxy_instance.create_history()
-            wfid = galaxy_instance.upload_workflow()
+            wfid = galaxy_instance.upload_workflow(safe_config.get_config_path())
             input = galaxy_instance.upload_and_build_data(id_hist, wfid)
 
             for pe in useg['endpoints']:
