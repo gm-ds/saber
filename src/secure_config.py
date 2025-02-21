@@ -37,11 +37,14 @@ class SecureConfig:
         config_dir.mkdir(parents=True, exist_ok=True)
         if os.name == 'posix':
             os.chmod(config_dir, stat.S_IRWXU)
-        settings_path = Path.joinpath(config_dir, 'settings.yaml')
-        if settings_path.is_file():
-            return settings_path
+        settings_path_yaml = Path.joinpath(config_dir, 'settings.yaml')
+        settings_path_yml = Path.joinpath(config_dir, 'settings.yml')
+        if settings_path_yaml.is_file():
+            return settings_path_yaml
+        elif settings_path_yml.is_file():
+            return settings_path_yml
         raise SystemExit(f"settings.yaml does not exists, please check {config_dir}.\
-                         \nOr make a new one with \'saber -x\' and \'saber -e PATH\'")
+                         \nOr make a new one with 'saber -x' and 'saber -e PATH'")
 
 
 
@@ -256,7 +259,7 @@ class SecureConfig:
                 editor = os.environ.get('EDITOR')
             
             if not editor:
-                for common_editor in ['nano', 'vim', 'vi', 'emacs']:
+                for common_editor in ['nano', 'vim', 'nvim', 'vi', 'emacs']:
                     try:
                         if subprocess.run(['which', common_editor], 
                                     capture_output=True, 
