@@ -23,6 +23,7 @@ def main():
         sys.exit(PATH_EXIT)
 
     config = safe_config.load_config()
+    config["config_path"] = safe_config.get_config_path()
 
     for i in range(len(config['usegalaxy_instances'])):
 
