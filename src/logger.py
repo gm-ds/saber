@@ -3,7 +3,7 @@
 import os
 import logging
 import platform
-from globals import TOOL_NAME
+from src.globals import TOOL_NAME
 from platformdirs import user_log_dir
 
 
