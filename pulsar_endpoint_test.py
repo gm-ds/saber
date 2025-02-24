@@ -11,6 +11,7 @@ from src.bioblend_testjobs import GalaxyTest
 def main():
     exit_code = 0
     useg = ''
+    results = dict()
     logger = CustomLogger()
     logger.info("Starting...")
 
@@ -40,9 +41,9 @@ def main():
 
             for pe in useg['endpoints']:
                 galaxy_instance.switch_pulsar(pe)
-                exit_code += galaxy_instance.execute_and_monitor_workflow(
+                results.update( galaxy_instance.execute_and_monitor_workflow(
                     workflow_input = input
-                )
+                ))
             logger.info("Cleaning Up...")
             galaxy_instance.purge_histories()
             galaxy_instance.purge_workflow()
@@ -67,7 +68,7 @@ def main():
                 logger.warning("Exiting with error")
                 sys.exit(exit_code + 1)
             logger.warning("Skipping to the next instance")
-    
+    print(results)
     sys.exit(exit_code)
 
 

@@ -253,31 +253,29 @@ class GalaxyTest():
             jobs = self.gi.jobs.get_jobs(invocation_id=invocation_id)
             if not jobs:
                 return False
-                
-            current_job = jobs[0]
-            job_state = current_job['state']
-            job_exit_code = current_job.get('exit_code')
-            self.logger.info(f'    {job_state}')
+            
+            for i in range(len(jobs)):
+                current_job = jobs[i]
+                job_state = current_job['state']
+                job_exit_code = current_job.get('exit_code')
+                self.logger.info(f'    {job_state}    Tool ID: {current_job.get("tool_id")}')
 
-            if job_state == "error":
-                self.logger.info(f'The job encountered an error.')
-                return True
-                
-            # Continue monitoring
-            if job_state == "ok" and job_exit_code is not None:
-                return True
-            return False
+                if job_state == "error":
+                    self.logger.info(f'The job encountered an error.')
+                    return True
+                    
+                # Continue monitoring
+                if job_state == "ok" and job_exit_code is not None:
+                    return True
+                return False
         
         success = self._wait_for_state(job_completed, timeout, sleep_time, f"Timeout {timeout}s expired.")
 
-        if not success:
-            return None
-
-        return self.gi.jobs.get_jobs(invocation_id=invocation_id)[0]
+        return self.gi.jobs.get_jobs(invocation_id=invocation_id)
 
 
 
-    def _handle_job_completion(self, job: dict) -> int:
+    def _handle_job_completion(self, jobs: list[dict[str, any]]) -> dict[list[dict[str, any]]]:
         '''
         Job completion handler. Changes History name in case of failures.
 
@@ -286,30 +284,37 @@ class GalaxyTest():
         :return: Integer to indicate failure or success
         :rtype: int
         '''
-        # Cancel job if it's still running
-        if job and job['state'] in ['new', 'queued', 'running']:
-            #self.logger.info('Canceling test job, timeout.')
-            self.logger.info('Job timeout, continuing.')
-            self._update_history_name('TIMEOUT')
+        timeout_jobs = [] 
+        successful_jobs = []
+        failed_jobs = []
+        for job in jobs:
+
+            # Cancel job if it's still running
+            if job and job['state'] in ['new', 'queued', 'running']:
+                #self.logger.info('Canceling test job, timeout.')
+                self.logger.info(f'Job {job["tool_id"]} timeout, continuing.')
+                timeout_jobs.append(self.gi.jobs.get_jobs(job['id'])) 
+                self._update_history_name('TIMEOUT')
+                
+            # Handle completion
+            if job and job['exit_code'] == 0:
+                self.logger.info(f'Test job {job["tool_id"]} succeeded')
+                successful_jobs.append(self.gi.jobs.get_jobs(job['id'])) 
+                self.gi.jobs.cancel_job(job['id'])
+
+    
+                
+            # Handle failure
+            job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
+            self.logger.info(f'Test job {job["tool_id"]} failed (exit_code: {job_exit_code})')
+            failed_jobs.append(self.gi.jobs.get_jobs(job['id']))
+            self._update_history_name()
             #self.gi.jobs.cancel_job(job['id'])
-            return 1
-            
-        # Handle completion
-        if job and job['exit_code'] == 0:
-            self.logger.info('Test job succeeded')
-            self.gi.jobs.cancel_job(job['id'])
-            return 0
-            
-        # Handle failure
-        job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
-        self.logger.info(f'Test job failed (exit_code: {job_exit_code})')
-        self._update_history_name()
-        #self.gi.jobs.cancel_job(job['id'])
-        return 1
+        return {self.config['name']:[successful_jobs, timeout_jobs, failed_jobs]}
 
 
 
-    def execute_and_monitor_workflow(self, workflow_input: dict, timeout: int = None) -> int:
+    def execute_and_monitor_workflow(self, workflow_input: dict, timeout: int = None) -> dict[list[dict[str, any]]]:
         '''
         Executes a workflow and monitors its status until completion or timeout.
 
@@ -325,9 +330,7 @@ class GalaxyTest():
         invocation = self.gi.workflows.invoke_workflow(
             self.wf['id'],
             inputs=workflow_input,
-            history_id= self.history['id'],
-            history_name= "Compute testing"
-
+            history_id= self.history['id']
         )
         self.logger.info( f'Invocation id: {invocation["id"]}')
         
@@ -337,10 +340,6 @@ class GalaxyTest():
              invocation['id'], timeout
         )
         
-        # Handle timeout case
-        if final_job_status is None:
-            return 1
-            
         # Handle job completion
         return self._handle_job_completion(final_job_status)
 
