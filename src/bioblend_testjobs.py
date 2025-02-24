@@ -5,7 +5,7 @@ import time
 import json
 from pathlib import Path
 from src.globals import API_EXIT, PATH_EXIT
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.logger import CustomLogger
 from bioblend.galaxy import datasets
 from bioblend.galaxy import GalaxyInstance
@@ -30,11 +30,13 @@ class GalaxyTest():
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
+        self.history_client = HistoryClient(self.gi)
+        self.history = None
+        self.wf = None
 
 
     # Upload necessary data
-    def upload_and_build_data(self, history_id: str, workflow_id: str, 
-                              inputs_data: dict = None, maxwait: int = None, 
+    def test_job_set_up(self, inputs_data: dict = None, maxwait: int = None, 
                               interval: int = None, local: bool = None) -> dict:
         if inputs_data is None: 
             inputs_data = self.config['data_inputs']
@@ -49,30 +51,34 @@ class GalaxyTest():
             local = self.config.get('local_upload', True)  
 
         if local: self.switch_pulsar(self.config['default_compute_id'], self.config['name'])
+        self._create_history()
+        self._upload_workflow()
         inputs_dict = inputs_data
         data = dict()
         self.logger.info(f"Uploading and building Datasets")
         for file_name, file_options in inputs_dict.items():
             file_url = file_options['url']
             file_type = file_options['file_type']
-            upload = self.gi.tools.put_url(file_url, history_id=history_id, file_name=file_name, file_type=file_type)
+            upload = self.gi.tools.put_url(file_url, history_id=self.history['id'], file_name=file_name, file_type=file_type)
             upload_id = upload['outputs'][0]['id']
-            wf_input = self.gi.workflows.get_workflow_inputs(workflow_id, label=file_name)[0]
+            wf_input = self.gi.workflows.get_workflow_inputs(self.wf['id'], label=file_name)[0]
             data[wf_input] = {'id':upload_id, 'src':'hda'}
 
         # Wait for dataset
         self.logger.info("Waiting for datasets...")
-        self._wait_for_dataset(history_id, maxwait, interval)
+        self._wait_for_dataset(maxwait, interval)
 
         return data
 
+
+
     # Manually wait for the dataset
     # for improved logging with custom format
-    def _wait_for_dataset(self, history_id: str, maxtime: int = None, interval: int = 5) -> bool:
+    def _wait_for_dataset(self, maxtime: int = None, interval: int = 5) -> bool:
         if maxtime is None:
             maxtime = self.config.get('maxwait', 12000)
         dataset_client =  datasets.DatasetClient(self.gi)
-        all_datasets = dataset_client.get_datasets(history_id=history_id)
+        all_datasets = dataset_client.get_datasets(history_id=self.history['id'])
         
         def check_dataset_ready():
             for dataset in all_datasets:
@@ -98,35 +104,43 @@ class GalaxyTest():
 
 
 
-    def create_history(self, history_name: str = None, clean_histories=False) -> str:
+    def _create_history(self, history_name: str = None) -> None:
         if history_name is None:
             history_name = self.config.get('history_name', "Pulsar Endpoints Test")
 
-        # Delete all histories to ensure there's enough free space
-        if clean_histories:
-            history_client = self.gi.histories.HistoryClient(self.gi)
-            for history in history_client.get_histories():
-                history_client.delete_history(history['id'], purge=True)
+        # Delete older histories to ensure there's enough free space
+        self.purge_histories(False)
 
-        new_hist = self.gi.histories.create_history(name=history_name)
-        self.logger.info(f'Creating History, ID: {new_hist["id"]}')
+        self.history = self.history_client.create_history(name=history_name)
+        self.logger.info(f'Creating History, ID: {self.history["id"]}')
 
-        return new_hist['id']
 
 
 
     # Clean and Purge Histories from bioblend_test
-    def purge_histories(self) -> None:
-        history_client = HistoryClient(self.gi)
-        for history in history_client.get_histories():
-            history_client.delete_history(history['id'], purge=True)
-            self.logger.info(f'Purging History, ID: {history["id"]}',)
+    def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
+        if self.history is not None:
+            for history in self.history_client.get_histories():
+                if history['name'] == self.config.get('history_name', "Pulsar Endpoints Test") and purge_new:
+                    self.history_client.delete_history(history['id'], purge=True)
+                    self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+                if (datetime.today() - datetime.strptime(history['update_time'],
+                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(weeks=1) and purge_old: 
+                    self.history_client.delete_history(history['id'], purge=True)
+                    self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+
+
+
+    # Rename History to keep it if an error occurs
+    def _update_history_name(self, msg: str = 'ERROR') -> None:
+        self.history_client.update_history(self.history['id'],
+                                             f'{msg} - {self.config.get("history_name", "Pulsar Endpoints Test")}')
+
+            
         
-
-
     # Upload Workflow if old one is no more and get workflow id
     # TODO: file error handling
-    def upload_workflow(self, config_path: Path, wf_path: str = None) -> str:
+    def _upload_workflow(self, config_path: Path = None, wf_path: str = None) -> None:
         if wf_path is None:
             wf_path = Path(self.config['ga_path'])
 
@@ -138,19 +152,19 @@ class GalaxyTest():
         wf_path = wf_path.resolve()
 
         if wf_path.exists():
-            wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
+            self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
             self.logger.info(f'Uploading Workflow, local path: {wf_path}')
-            return wf['id']
-        
-        self.logger.error(f"Workflow path does not exist: {wf_path}")
-        raise SystemExit(PATH_EXIT)
+        else:
+            self.logger.error(f"Workflow path does not exist: {wf_path}")
+            raise SystemExit(PATH_EXIT)
 
 
 
     # Delete Workflows 
-    def purge_workflow(self, workflow_id: str ) -> None:
-        self.gi.workflows.delete_workflow(workflow_id)
-        self.logger.info(f'Purging Workflow, ID: {workflow_id}')
+    def purge_workflow(self ) -> None:
+        if self.wf is not None:
+            self.gi.workflows.delete_workflow(self.wf['id'])
+            self.logger.info(f'Purging Workflow, ID: {self.wf["id"]}')
 
 
 
@@ -194,8 +208,10 @@ class GalaxyTest():
     def _handle_job_completion(self, job: dict) -> int:
         # Cancel job if it's still running
         if job and job['state'] in ['new', 'queued', 'running']:
-            self.logger.info('Canceling test job, timeout.')
-            self.gi.jobs.cancel_job(job['id'])
+            #self.logger.info('Canceling test job, timeout.')
+            self.logger.info('Job timeout, continuing.')
+            self._update_history_name('TIMEOUT')
+            #self.gi.jobs.cancel_job(job['id'])
             return 1
             
         # Handle completion
@@ -207,21 +223,21 @@ class GalaxyTest():
         # Handle failure
         job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
         self.logger.info(f'Test job failed (exit_code: {job_exit_code})')
-        self.gi.jobs.cancel_job(job['id'])
+        self._update_history_name()
+        #self.gi.jobs.cancel_job(job['id'])
         return 1
 
 
 
-    def execute_and_monitor_workflow(self, workflow_id: str, 
-                                workflow_input: dict, ID_history: str, timeout: int = None,) -> int:
+    def execute_and_monitor_workflow(self, workflow_input: dict, timeout: int = None,) -> int:
 
         if timeout is None:
             timeout = self.config.get('timeout', 12000)        
         # Workflow invocation
         invocation = self.gi.workflows.invoke_workflow(
-            workflow_id,
+            self.wf['id'],
             inputs=workflow_input,
-            history_id= ID_history,
+            history_id= self.history['id'],
             history_name= "Compute testing"
 
         )

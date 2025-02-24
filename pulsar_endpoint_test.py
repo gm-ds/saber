@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from src.globals import TOOL_NAME, PATH_EXIT
+from src.globals import TOOL_NAME, PATH_EXIT, P
 from src.logger import CustomLogger
 from src.secure_config import SecureConfig
 from src.bioblend_testjobs import GalaxyTest
@@ -16,7 +16,7 @@ def main():
 
     try:
         safe_config = SecureConfig(TOOL_NAME)
-        safe_config.initialize_encryption('place_holder')
+        safe_config.initialize_encryption(P)
         
     except (ValueError, PermissionError) as e:
         logger.error(f"An error occurred: {e}")
@@ -35,26 +35,23 @@ def main():
                                       useg.get('password', None), useg, logger)
 
         try:
-            id_hist = galaxy_instance.create_history()
-            wfid = galaxy_instance.upload_workflow(safe_config.get_config_path())
-            input = galaxy_instance.upload_and_build_data(id_hist, wfid)
+            input = galaxy_instance.test_job_set_up()
 
             for pe in useg['endpoints']:
                 galaxy_instance.switch_pulsar(pe)
                 exit_code += galaxy_instance.execute_and_monitor_workflow(
-                    workflow_id = wfid,
-                    workflow_input = input,
-                    ID_history = id_hist
+                    workflow_input = input
                 )
             logger.info("Cleaning Up...")
             galaxy_instance.purge_histories()
-            galaxy_instance.purge_workflow(wfid)
+            galaxy_instance.purge_workflow()
+            galaxy_instance.switch_pulsar(useg['default_compute_id'])
             logger.info("Test completed")
 
         except KeyboardInterrupt:
             logger.warning("Test interrupted")
             galaxy_instance.purge_histories()
-            galaxy_instance.purge_workflow(wfid)
+            galaxy_instance.purge_workflow()
             logger.info("Clean-up terminated")
             print("\n")
             sys.exit(exit_code)
@@ -63,7 +60,7 @@ def main():
         except Exception as e:
             logger.warning(f"Error: {e}")
             galaxy_instance.purge_histories()
-            galaxy_instance.purge_workflow(wfid)
+            galaxy_instance.purge_workflow()
             logger.info("Clean-up terminated")
             if i == len(config['usegalaxy_instances'])-1:
                 logger.warning("Exiting with error")
