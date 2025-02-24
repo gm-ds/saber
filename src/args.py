@@ -39,6 +39,14 @@ class Parser():
 
 
     def _custom_args_validation(self) -> None:
+        '''
+        Validates arguments and ensures dependencies.
+
+        If the `example_settings` argument is set, it replaces the `editable` 
+        dictionary with its contents, overriding all other arguemnts.
+
+        :raises argparse.ArgumentError: If a required password argument is missing when needed.
+        '''
         for a in self.editable['edit', 'encrypt', 'decrypt']:
             if a is not None:
                 if (self.editable['password'] == P):
@@ -50,6 +58,9 @@ class Parser():
 
 
     def _set_password(self) -> None:
+        '''
+        Set password from environ if SABER_PASSWORD is defined when password is not set through argsparse.
+        '''
         if (self.editable['password'] == P) and (os.getenv('SABER_PASSWORD', None) is not None):
             self.editable['password'] = os.getenv('SABER_PASSWORD')
 
@@ -58,6 +69,9 @@ class Parser():
 
 
     def _check_password_type(self) -> None:
+        '''
+        If password given is a path to a file, its content are used.
+        '''
         self._path_resolver(self.editable['password'])
         if self.editable['password'].is_file():
             with open(self.editable['password'], 'r') as f:
@@ -66,6 +80,9 @@ class Parser():
 
 
     def _output_check(self):
+        '''
+        Check validity of the path given for the HTML output.
+        '''
         self._path_resolver(self.editable['html_report'])
         if (self.editable['html_report'].suffix == '.html') and (self.editable['html_report'].parent.is_dir()):
             pass
@@ -74,6 +91,13 @@ class Parser():
 
 
     def _safety_check(self, args_path: list) -> None:
+        '''
+        Checks the type of a given file.
+        Non YAML files fail the check.
+
+        :param args_path: The YAML file path to check.
+        :type args_path: Path
+        '''
         for p in args_path:
             if p is not None:
                 self._path_resolver(p)
@@ -84,6 +108,14 @@ class Parser():
 
 
     def _path_resolver(self, path: Path) -> Path:
+        '''
+        Resolves a given file path to an absolute path.
+
+        :param path: The file path to resolve.
+        :type path: Path
+        :return: The resolved absolute file path.
+        :rtype: Path
+        '''
         if path is not None or isinstance(path, Path):
             path = Path(path)
         path = path.expanduser() if not path.is_absolute() else path

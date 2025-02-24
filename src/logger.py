@@ -3,6 +3,7 @@
 import os
 import logging
 import platform
+from globals import TOOL_NAME
 from platformdirs import user_log_dir
 
 
@@ -25,7 +26,19 @@ class ContextFilter(logging.Filter):
 
 
 class CustomLogger():
-    def __init__(self, init_log_name: str = "saber"):
+    '''
+    Custom Logger
+
+    :type init_log_name: str
+    :param init_log_name: logger's name.
+    '''
+    def __init__(self, init_log_name: str = TOOL_NAME):
+        '''
+        Custom Logger
+
+        :type init_log_name: str
+        :param init_log_name: logger's name.
+        '''
         self._log_context = {
             "GalaxyInstance": "None",
             "Endpoint": "None"
@@ -37,8 +50,14 @@ class CustomLogger():
         self._setup_logging()
 
     
-    # Logging set up
+
     def _setup_logging(self):
+        '''
+        Set up logging with customs formatter, handlers and syslog.
+        Log are set up with file rotation: every midnight if file is older than 7 day 
+        or heavier than 10MB 
+        Default log paths depends on user.
+        '''
         log_name = f"{self._log_name}.log"
         try:
             if os.geteuid() == 0:
@@ -72,6 +91,7 @@ class CustomLogger():
 
         self._setup_syslog()
 
+        # TODO: Fix this
         # Attach BioBlend logger to use the same handlers
         bioblend_logger = logging.getLogger("bioblend")
         bioblend_logger.setLevel(self._logger.level)
@@ -85,8 +105,10 @@ class CustomLogger():
 
 
 
-        # Setup syslog handler with platform-specific configuration
     def _setup_syslog(self):
+        '''
+        Set up syslog handler
+        '''
         try:
             if platform.system() == "Linux":
                 syslog_address = "/dev/log"
@@ -107,6 +129,14 @@ class CustomLogger():
         
    
     def update_log_context(self, instance_name: str = "None", endpoint: str = "Default"):
+        '''
+        Updates the logging context with the specified instance name and endpoint.
+
+        :param instance_name: The name of the Galaxy instance to be logged. Defaults to "None".
+        :type instance_name: str, optional
+        :param endpoint: The endpoint associated with the Galaxy instance. Defaults to "Default".
+        :type endpoint: str, optional
+        '''
         # Update context dict
         self._log_context['GalaxyInstance'] = instance_name or "None"
         self._log_context['Endpoint'] = endpoint or "Default"

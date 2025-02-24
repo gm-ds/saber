@@ -15,7 +15,26 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 class SecureConfig:
+    '''
+    A class for securely handling configuration files for a specific tool.
+    
+    The class manages configuration paths and provides encryption and decryption for sensitive configuration YAMLs.
+
+    :param tool_name: The name of the tool.
+    :type tool_name: str
+    :param config_path: An optional path to the configuration file. If not provided, the default config path will be used.
+    :type config_path: Path, optional
+    '''
     def __init__(self, tool_name: str, config_path: Path = None):
+        '''
+        Initializes the SecureConfig object with a tool name and configuration path.
+        If no configuration path is provided, the default configuration path will be used.
+
+        :param tool_name: The name of the tool.
+        :type tool_name: str
+        :param config_path: An optional path to the configuration file. If not provided, the default config path will be used.
+        :type config_path: Path, optional
+        '''
         self.tool_name = tool_name
         self.config_path = Path(config_path) if config_path else self._get_default_config_path()
         self._fernet: Optional[Fernet] = None
@@ -23,6 +42,11 @@ class SecureConfig:
 
 
     def _get_default_config_path(self) -> Path:
+        '''
+        Default configuration path.
+        :return: Path to the configuration file
+        :rtype: Path
+        '''
         if os.name == 'nt':  # Windows
             base_path = Path(os.environ.get('APPDATA', Path.home()))
             config_dir = base_path / self.tool_name
@@ -49,11 +73,23 @@ class SecureConfig:
 
 
     def get_config_path(self) -> Path:
+        '''
+        Return stored configuration path.
+        :return: Path to the configuration file
+        :rtype: Path
+        '''
         return self.config_path
 
     
 
     def _derive_key(self, password: str) -> bytes:
+        '''
+        Key Derivation from passoword using PBKDF2HMAC and SHA256.
+        Currently the salt is static.
+
+        :type password: str
+        :param password: String for key derivation.
+        '''
         static_salt = b'static_salt_value_777' # TODO: Use seasoning properly
             
         kdf = PBKDF2HMAC(
@@ -68,12 +104,21 @@ class SecureConfig:
 
 
     def _set_secure_permissions(self):
+        '''
+        Set secure permitions on configuration file, mode 600 un unix systems.
+        '''
         if os.name == 'posix':
             os.chmod(self.config_path, stat.S_IRUSR | stat.S_IWUSR)  # 600 permissions
 
 
 
     def encrypt_data(self, data: bytes) -> bytes:
+        '''
+        Data encryption with Fernet.
+
+        :type data: bytes
+        :param data: Data to encrypt
+        '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
         return self._fernet.encrypt(data)
@@ -81,6 +126,12 @@ class SecureConfig:
 
 
     def decrypt_data(self, encrypted_data: bytes) -> bytes:
+        '''
+        Data decryption with Fernet.
+
+        :type data: bytes
+        :param data: Data to decrypt
+        '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
         return self._fernet.decrypt(encrypted_data)
@@ -88,12 +139,29 @@ class SecureConfig:
 
 
     def initialize_encryption(self, password: str):
+        '''
+        Fernet initialization with derived key.
+
+        :type password: str
+        :param password: String for key derivation.
+        '''
         key = self._derive_key(password)
         self._fernet = Fernet(key)
 
 
 
     def is_encrypted(self) -> bool:
+        '''
+        Checks whether the configuration file is encrypted.
+
+        The function attempts to decrypt the configuration file using the stored encryption key.
+        If decryption is successful, the file is considered encrypted. If decryption fails the 
+        function assumes the file is not encrypted or encrypted with another key.
+
+        :return: True if the configuration file is encrypted with the current key, otherwise False.
+        :rtype: bool
+        '''
+        
         if not self.config_path.exists():
             return False
             
@@ -109,13 +177,19 @@ class SecureConfig:
             return True
             
         except Exception:
-            # If decryption fails, it wasn't encrypted (or not encrypted with this key)
-            # TODO: Improve Error handlings
             return False
 
 
 
-    def _write_file(self, data):
+    def _write_file(self, data: bytes):
+        '''
+        Write a file using a tempfile and atomically replace it in the configuration path.
+        If it fails it will use the same directory to create a temporary file and use rename, 
+        for the atomic substitution.
+        
+        :type data: bytes
+        :param data: Data to write on file
+        '''
         # Try using tempfile and replace, can fail in some cases
         try:
             with tempfile.NamedTemporaryFile(mode='wb', delete=False) as tmp_file:
@@ -126,7 +200,7 @@ class SecureConfig:
             
             os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
             
-            os.replace(tmp_path, self.config_path)
+            os.replace(tmp_path, self.config_path) # Either succed or fails to replace file 
 
         except OSError:
             # Fallback: Use same-directory temporary file
@@ -140,7 +214,7 @@ class SecureConfig:
                 
                 os.chmod(temp_path, stat.S_IRUSR | stat.S_IWUSR)
                 
-                os.rename(temp_path, self.config_path)
+                os.rename(temp_path, self.config_path)  # Still atomic like replace
                 
             except Exception as e:
                 # Clean up
@@ -154,6 +228,9 @@ class SecureConfig:
 
 
     def encrypt_existing_file(self):
+        '''
+        Encrypt an existing configuration YAML file. Validates YAML format before encryption
+        '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
@@ -183,6 +260,9 @@ class SecureConfig:
 
 
     def decrypt_existing_file(self):
+        '''
+        Decrypt an existing configuration YAML file.
+        '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
@@ -201,6 +281,12 @@ class SecureConfig:
         
     
     def save_config(self, config_data: dict):
+        '''
+        Save encrypted data to configuration file.
+
+        :type config_data: dict
+        :param config_data: Dictionary containing configuration data
+        '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
@@ -216,6 +302,12 @@ class SecureConfig:
 
 
     def load_config(self) -> dict:
+        '''
+        Load configuration from YAML file whether is encrypted or not.
+
+        :return: Configuration dictionary
+        :rtype: dict
+        '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
@@ -236,6 +328,12 @@ class SecureConfig:
         
 
     def _get_editor_command(self) -> str:
+        '''
+        Try to get editor from environment, fallbacks on nano.
+
+        :return: Editor command name
+        :rtype: str
+        '''
         if os.name == 'nt':  # Windows, why do I bother??
             editor = os.environ.get('VISUAL')
             if not editor:
@@ -278,17 +376,21 @@ class SecureConfig:
 
 
     def edit_config(self):
+        '''
+        Open the editor with the decrypted file for editing.
+        Uses tempfile to store modification before saving it to the configuration YAML file.
+        '''
         current_config = self.load_config()
         
         temp_path = self.config_path.with_suffix('.editing.yaml')
         
         try:
             with open(temp_path, 'w') as f:
-                yaml.dump(current_config, f, default_flow_style=False)
+                yaml.dump(current_config, f, default_flow_style=False) #N.B.: Flow style on false means no inline yaml
             
             os.chmod(temp_path, stat.S_IRUSR | stat.S_IWUSR)
             
-            mtime_before = temp_path.stat().st_mtime
+            mtime_before = temp_path.stat().st_mtime # Last modifications
             
             editor = self._get_editor_command()
             subprocess.run([editor, str(temp_path)], check=True)
