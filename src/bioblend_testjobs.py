@@ -4,7 +4,7 @@
 import time
 import json
 from pathlib import Path
-from src.globals import API_EXIT, PATH_EXIT
+from src.globals import API_EXIT, PATH_EXIT, TOOL_NAME
 from datetime import datetime, timedelta
 from src.logger import CustomLogger
 from bioblend.galaxy import datasets
@@ -34,7 +34,7 @@ class GalaxyTest():
     def __init__(self, url: str, key: str, email: str = None, gpassword: str = None, 
                  config: dict = None, class_logger = None):
         #Initialize GalaxyInstance
-        self.logger = class_logger if not isinstance(class_logger, CustomLogger) else  CustomLogger()
+        self.logger = class_logger if not isinstance(class_logger, CustomLogger) else  CustomLogger(TOOL_NAME)
         self.gi = GalaxyInstance(url, email, gpassword) if ((email is not None) and (gpassword is not None)) else GalaxyInstance(url, key)
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
@@ -44,7 +44,8 @@ class GalaxyTest():
             "sleep_time": 5,
             "maxwait": 12000,
             "interval": 5,
-            "timeout": 12000
+            "timeout": 12000,
+            "history_name": "Pulsar Endpoints Test"
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
@@ -163,7 +164,7 @@ class GalaxyTest():
         '''
         if self.history is not None:
             for history in self.history_client.get_histories():
-                if history['name'] == self.config.get('history_name', "Pulsar Endpoints Test") and purge_new:
+                if history['name'] == self.config.get('history_name') and purge_new:
                     self.history_client.delete_history(history['id'], purge=True)
                     self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
                 if (datetime.today() - datetime.strptime(history['update_time'],
@@ -181,9 +182,9 @@ class GalaxyTest():
         :type msg: str, optional
         :param msg: Small message that is added to the history name to provide some information. Defaults to ERROR
         '''
-        self.history_client.update_history(self.history['id'],
-                                             f'{msg} - {self.config.get("history_name", "Pulsar Endpoints Test")}')
-
+        message = f"{msg}-{self.config.get('history_name')}"
+        self.history_client.update_history(self.history['id'], name=message)
+        self.logger.info(f"History name updated to: {message}")
             
         
 
@@ -220,7 +221,6 @@ class GalaxyTest():
 
 
 
-
     def purge_workflow(self) -> None:
         '''
         Delete permanently the workflow uploaded for the test
@@ -229,6 +229,17 @@ class GalaxyTest():
             self.gi.workflows.delete_workflow(self.wf['id'])
             self.logger.info(f'Purging Workflow, ID: {self.wf["id"]}')
 
+
+
+    def _tool_id_split(self, tool_id: str) -> str:
+        '''
+        Remove all characters before "/devteam" inclusively, to avoid clutter in the log.
+        If the string is not present it leaves the input untouched
+        '''
+        if "/devteam/" in tool_id:
+            return tool_id.split("/devteam/")[1]
+        else:
+            return tool_id
 
 
     def _monitor_job_status(self, invocation_id: str, 
@@ -258,18 +269,21 @@ class GalaxyTest():
                 current_job = jobs[i]
                 job_state = current_job['state']
                 job_exit_code = current_job.get('exit_code')
-                self.logger.info(f'    {job_state}    Tool ID: {current_job.get("tool_id")}')
+                tool_id = self._tool_id_split(current_job.get("tool_id"))
+                self.logger.info(f'    {job_state}    Tool ID: {tool_id}')
 
                 if job_state == "error":
                     self.logger.info(f'The job encountered an error.')
-                    return True
+                    if i == len(jobs)-1:
+                        return True
                     
                 # Continue monitoring
                 if job_state == "ok" and job_exit_code is not None:
-                    return True
-                return False
+                    if i == len(jobs)-1:
+                        return True        
+            return False
         
-        success = self._wait_for_state(job_completed, timeout, sleep_time, f"Timeout {timeout}s expired.")
+        self._wait_for_state(job_completed, timeout, sleep_time, f"Timeout {timeout}s expired.")
 
         return self.gi.jobs.get_jobs(invocation_id=invocation_id)
 
@@ -297,19 +311,19 @@ class GalaxyTest():
                 self._update_history_name('TIMEOUT')
                 
             # Handle completion
-            if job and job['exit_code'] == 0:
+            elif job and job['exit_code'] == 0:
                 self.logger.info(f'Test job {job["tool_id"]} succeeded')
                 successful_jobs.append(self.gi.jobs.get_jobs(job['id'])) 
                 self.gi.jobs.cancel_job(job['id'])
 
-    
+            else:
                 
-            # Handle failure
-            job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
-            self.logger.info(f'Test job {job["tool_id"]} failed (exit_code: {job_exit_code})')
-            failed_jobs.append(self.gi.jobs.get_jobs(job['id']))
-            self._update_history_name()
-            #self.gi.jobs.cancel_job(job['id'])
+                # Handle failure
+                job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
+                self.logger.info(f'Test job {job["tool_id"]} failed (exit_code: {job_exit_code})')
+                failed_jobs.append(self.gi.jobs.get_jobs(job['id']))
+                self._update_history_name()
+                #self.gi.jobs.cancel_job(job['id'])
         return {self.config['name']:[successful_jobs, timeout_jobs, failed_jobs]}
 
 
