@@ -3,7 +3,6 @@
 import os
 import logging
 import platform
-from src.globals import TOOL_NAME
 from platformdirs import user_log_dir
 
 
@@ -32,7 +31,7 @@ class CustomLogger():
     :type init_log_name: str
     :param init_log_name: logger's name.
     '''
-    def __init__(self, init_log_name: str = TOOL_NAME):
+    def __init__(self, init_log_name: str):
         '''
         Custom Logger
 
