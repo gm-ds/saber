@@ -35,3 +35,33 @@ PATH_EXIT = 1
 
 API_EXIT = 3
 
+
+# Example Config
+
+example = """---
+usegalaxy_instances:
+  - name: Main
+    url: "usegalaxy.examples"  # Replace with the actual instance URL
+    api: "YOUR_API_KEY"  # Replace with a valid API key
+    endpoints:
+      - "changeme"  # Define the specific endpoints required
+      - "changeme"
+    # Optional: If authentication via email/password is needed, uncomment and set values
+    # If API is defined it alway be used first
+    # email: "user@example.com"
+    # password: "password"
+    
+    default_compute_id: "None"  # Default non-remote compute
+    maxwait: 12000  # Upload timeout in milliseconds
+    interval: 5  # Time (seconds) between state checks
+
+# Global settings (can be overridden per instance)
+ga_path: "/absolute/path"  # Define path to workflow .ga file
+data_inputs:
+  label_example_name:  # Change this key accordingly to the workflow used
+    url: "change_me"  # Replace with the data source URL
+    file_type: "change_me"  # Correct file type
+
+timeout: 1200  # General timeout value (units unclear, confirm if seconds)
+
+"""
