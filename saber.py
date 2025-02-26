@@ -14,10 +14,10 @@ def main():
     from src.args import Parser
     from src.logger import CustomLogger
     from src.secure_config import SecureConfig
-    from src.bioblend_testjobs import GalaxyTest
-    from src.globals import TOOL_NAME, PATH_EXIT, P, CONFIG_PATH
+    from src.bioblend_testjobs import GalaxyTest, json
+    from src.globals import TOOL_NAME, PATH_EXIT, TIMEOUT_EXIT, GAL_ERROR, JOB_ERR_EXIT, P, CONFIG_PATH
 
-    exit_code = 0
+
     results = dict()
     logger = CustomLogger(TOOL_NAME)
     logger.info("Starting...")
@@ -90,11 +90,14 @@ def main():
 
             for pe in useg['endpoints']:
                 galaxy_instance.switch_pulsar(pe)
-                results.update(
-                    galaxy_instance.execute_and_monitor_workflow(
-                        workflow_input = input
+                if useg['name'] not in results:
+                    results[useg['name']] = {"SUCCESSFUL_JOBS": {}, "TIMEOUT_JOBS": {}, "FAILED_JOBS": {}}
+                pre_results = galaxy_instance.execute_and_monitor_workflow(
+                    workflow_input = input
                     )
-                )
+                for key in ["SUCCESSFUL_JOBS", "TIMEOUT_JOBS", "FAILED_JOBS"]:
+                    if key in pre_results and isinstance(pre_results[key], dict):
+                        results[useg['name']][key].update(pre_results[key])  
 
             logger.info("Cleaning Up...")
             galaxy_instance.purge_histories()
@@ -108,7 +111,7 @@ def main():
             galaxy_instance.purge_workflow()
             logger.info("Clean-up terminated")
             print("\n")
-            sys.exit(exit_code)
+            sys.exit(0)
 
 
         except Exception as e:
@@ -118,12 +121,18 @@ def main():
             logger.info("Clean-up terminated")
             if i == len(config['usegalaxy_instances'])-1:
                 logger.warning("Exiting with error")
-                sys.exit(exit_code + 1)
+                sys.exit(GAL_ERROR)
             logger.warning("Skipping to the next instance")
 
-
-    print(results) #Work In Progress
-    sys.exit(exit_code)
+    print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
+    for r in results.values():
+        if r.get("TIMEOUT_JOBS"):
+            logger.warning(f"At least one job reached timeout, exiting with: {TIMEOUT_EXIT}")
+            sys.exit(TIMEOUT_EXIT)
+        if r.get("FAILED_JOBS"):
+            logger.warning(f"At least one job failed, exiting with: {JOB_ERR_EXIT}")
+            sys.exit(JOB_ERR_EXIT)
+    sys.exit(0)
 
 
 if __name__ == '__main__':

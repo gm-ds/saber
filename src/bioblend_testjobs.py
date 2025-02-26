@@ -289,7 +289,7 @@ class GalaxyTest():
 
 
 
-    def _handle_job_completion(self, jobs: list[dict[str, any]]) -> dict[list[dict[str, any]]]:
+    def _handle_job_completion(self, jobs: list[dict[str, any]]) -> dict[dict[dict[list[dict[str, any]]]]]:
         '''
         Job completion handler. Changes History name in case of failures.
 
@@ -298,33 +298,46 @@ class GalaxyTest():
         :return: Integer to indicate failure or success
         :rtype: int
         '''
-        timeout_jobs = [] 
-        successful_jobs = []
-        failed_jobs = []
+        timeout_jobs = {}
+        successful_jobs = {}
+        failed_jobs = {}
         for job in jobs:
 
             # Cancel job if it's still running
             if job and job['state'] in ['new', 'queued', 'running']:
                 #self.logger.info('Canceling test job, timeout.')
-                self.logger.info(f'Job {job["tool_id"]} timeout, continuing.')
-                timeout_jobs.append(self.gi.jobs.get_jobs(job['id'])) 
+                self.logger.info(f'Job {job["id"]} failed due to timeout:')
+                self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
+                timeout_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                              "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                              "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                              }
                 self._update_history_name('TIMEOUT')
                 
             # Handle completion
             elif job and job['exit_code'] == 0:
-                self.logger.info(f'Test job {job["tool_id"]} succeeded')
-                successful_jobs.append(self.gi.jobs.get_jobs(job['id'])) 
+                self.logger.info(f'Job {job["id"]} succeeded:')
+                self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
+                successful_jobs[job['id']] = {"INFO": self.gi.jobs.show_job(job['id']),
+                                              "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                              }
                 self.gi.jobs.cancel_job(job['id'])
 
             else:
                 
                 # Handle failure
                 job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
-                self.logger.info(f'Test job {job["tool_id"]} failed (exit_code: {job_exit_code})')
-                failed_jobs.append(self.gi.jobs.get_jobs(job['id']))
+                self.logger.info(f'Job {job["id"]} failed (exit_code: {job_exit_code}):')
+                self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
+                failed_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                  "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                  "METRICS": self.gi.jobs.get_metrics(job['id'])}
                 self._update_history_name()
                 #self.gi.jobs.cancel_job(job['id'])
-        return {self.config['name']:[successful_jobs, timeout_jobs, failed_jobs]}
+        return_values = {"SUCCESSFUL_JOBS": successful_jobs, 
+                                     "TIMEOUT_JOBS": timeout_jobs, 
+                                     "FAILED_JOBS": failed_jobs}
+        return return_values
 
 
 
