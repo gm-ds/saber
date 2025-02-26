@@ -111,7 +111,7 @@ class Parser():
         '''
         Wrapper to pass value, key tuples.
         '''
-        if self.editable:
+        if self.editable['example_settings']:
             pass
         else:
             paths = [
