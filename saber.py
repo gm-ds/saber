@@ -13,7 +13,7 @@ def print_example():
 def main():
     from src.args import Parser
     from src.logger import CustomLogger
-    from src.secure_config import SecureConfig
+    from src.secure_config import SecureConfig, Path
     from src.bioblend_testjobs import GalaxyTest, json
     from src.globals import TOOL_NAME, PATH_EXIT, TIMEOUT_EXIT, GAL_ERROR, JOB_ERR_EXIT, P, CONFIG_PATH
 
@@ -57,7 +57,7 @@ def main():
             safe_config.edit_config()
             sys.exit(0)
             
-        if args.settings:
+        if isinstance(args.settings, Path):
             safe_config = SecureConfig(TOOL_NAME, args.settings)
             safe_config.initialize_encryption(args.password)
             
