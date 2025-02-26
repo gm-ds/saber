@@ -3,7 +3,7 @@
     "annotation": "",
     "comments": [],
     "format-version": "0.1",
-    "name": "FastQC",
+    "name": "FastQC-bowtie2",
     "report": {
         "markdown": "\n# Workflow Execution Report\n\n## Workflow Inputs\n```galaxy\ninvocation_inputs()\n```\n\n## Workflow Outputs\n```galaxy\ninvocation_outputs()\n```\n\n## Workflow\n```galaxy\nworkflow_display()\n```\n"
     },
@@ -25,13 +25,13 @@
             "outputs": [],
             "position": {
                 "left": 0,
-                "top": 0
+                "top": 10.149989936301102
             },
             "tool_id": null,
             "tool_state": "{\"optional\": false, \"tag\": null}",
             "tool_version": null,
             "type": "data_input",
-            "uuid": "2a652a47-d8eb-41db-9121-0f961f59b694",
+            "uuid": "a89234d2-9e3f-4c83-ad2e-224a0b241bbe",
             "when": null,
             "workflow_outputs": []
         },
@@ -57,10 +57,6 @@
                 },
                 {
                     "description": "runtime parameter for tool FastQC",
-                    "name": "input_file"
-                },
-                {
-                    "description": "runtime parameter for tool FastQC",
                     "name": "limits"
                 }
             ],
@@ -78,7 +74,7 @@
             ],
             "position": {
                 "left": 286,
-                "top": 213
+                "top": 223.1499899363011
             },
             "post_job_actions": {},
             "tool_id": "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy1",
@@ -88,26 +84,70 @@
                 "owner": "devteam",
                 "tool_shed": "toolshed.g2.bx.psu.edu"
             },
-            "tool_state": "{\"adapters\": {\"__class__\": \"RuntimeValue\"}, \"contaminants\": {\"__class__\": \"RuntimeValue\"}, \"input_file\": {\"__class__\": \"RuntimeValue\"}, \"kmers\": \"7\", \"limits\": {\"__class__\": \"RuntimeValue\"}, \"min_length\": null, \"nogroup\": false, \"__page__\": null, \"__rerun_remap_job_id__\": null}",
+            "tool_state": "{\"adapters\": {\"__class__\": \"RuntimeValue\"}, \"contaminants\": {\"__class__\": \"RuntimeValue\"}, \"input_file\": {\"__class__\": \"ConnectedValue\"}, \"kmers\": \"7\", \"limits\": {\"__class__\": \"RuntimeValue\"}, \"min_length\": null, \"nogroup\": false, \"__page__\": null, \"__rerun_remap_job_id__\": null}",
             "tool_version": "0.74+galaxy1",
             "type": "tool",
-            "uuid": "fb60bad1-d040-4f15-bc1d-c10840b59634",
+            "uuid": "3fedfe82-0010-4335-ac5d-af2734a8f42a",
             "when": null,
             "workflow_outputs": [
                 {
                     "label": null,
                     "output_name": "html_file",
-                    "uuid": "3ba55585-aecb-4e96-9f55-6897561975a3"
+                    "uuid": "951da2cb-55b0-4114-8c79-2eac9a29edca"
                 },
                 {
                     "label": null,
                     "output_name": "text_file",
-                    "uuid": "626737b8-cd77-4fdc-a2a1-e0f4e8abfd7b"
+                    "uuid": "db465aea-ac3d-4713-ac0c-923d033e537d"
                 }
             ]
+        },
+        "2": {
+            "annotation": "",
+            "content_id": "toolshed.g2.bx.psu.edu/repos/devteam/bowtie2/bowtie2/2.5.3+galaxy1",
+            "errors": null,
+            "id": 2,
+            "input_connections": {
+                "library|input_1": {
+                    "id": 0,
+                    "output_name": "output"
+                }
+            },
+            "inputs": [
+                {
+                    "description": "runtime parameter for tool Bowtie2",
+                    "name": "library"
+                }
+            ],
+            "label": null,
+            "name": "Bowtie2",
+            "outputs": [
+                {
+                    "name": "output",
+                    "type": "bam"
+                }
+            ],
+            "position": {
+                "left": 445.2931058196625,
+                "top": 0
+            },
+            "post_job_actions": {},
+            "tool_id": "toolshed.g2.bx.psu.edu/repos/devteam/bowtie2/bowtie2/2.5.3+galaxy1",
+            "tool_shed_repository": {
+                "changeset_revision": "d5ceb9f3c25b",
+                "name": "bowtie2",
+                "owner": "devteam",
+                "tool_shed": "toolshed.g2.bx.psu.edu"
+            },
+            "tool_state": "{\"analysis_type\": {\"analysis_type_selector\": \"simple\", \"__current_case__\": 0, \"presets\": \"no_presets\"}, \"library\": {\"type\": \"single\", \"__current_case__\": 0, \"input_1\": {\"__class__\": \"RuntimeValue\"}, \"unaligned_file\": false, \"aligned_file\": false}, \"reference_genome\": {\"source\": \"indexed\", \"__current_case__\": 0, \"index\": \"sacCer3\"}, \"rg\": {\"rg_selector\": \"do_not_set\", \"__current_case__\": 3}, \"sam_options\": {\"sam_options_selector\": \"no\", \"__current_case__\": 1}, \"save_mapping_stats\": false, \"__page__\": null, \"__rerun_remap_job_id__\": null}",
+            "tool_version": "2.5.3+galaxy1",
+            "type": "tool",
+            "uuid": "b08af785-ec0c-43bb-b1ee-9693cf18ada1",
+            "when": null,
+            "workflow_outputs": []
         }
     },
     "tags": [],
-    "uuid": "e9b17bdd-d8cf-42dc-9420-e45ec4d1ad30",
-    "version": 1
+    "uuid": "3d48be2d-49bb-4657-a49f-875f4d0d0252",
+    "version": 3
 }
