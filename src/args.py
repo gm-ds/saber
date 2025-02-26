@@ -87,7 +87,7 @@ class Parser():
                 if tmp['path'].is_file():
                     with open(tmp['path'], 'r') as f:
                         self.editable['password'] = f.read()
-                        print("debug")
+                        
         
 
 
