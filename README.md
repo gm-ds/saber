@@ -2,7 +2,8 @@
  Systematic API Benchmark for (Pulsar) Endpoint Reliability
  
 >**:warning: Work in Progress**
-    Use at yout own risk.
+>
+>Use at your own risk.
 
 ## CLI arguments
 
