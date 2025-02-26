@@ -35,6 +35,11 @@ PATH_EXIT = 1
 
 API_EXIT = 3
 
+TIMEOUT_EXIT = 42
+
+GAL_ERROR = 10
+
+JOB_ERR_EXIT = TIMEOUT_EXIT
 
 # Example Config
 
