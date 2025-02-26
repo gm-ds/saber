@@ -80,14 +80,14 @@ class Parser():
         '''
         If password given is a path to a file, its content are used.
         '''
-        if self.editable['password'] != None:
+        if self.editable['password'] is not None:
             if self.editable['password'] != self.place_holder:
-                self._path_resolver(self.editable['password'], 'password')
-                if isinstance(self.editable['password'], Path) and self.editable['password'].is_file():
-                    with open(self.editable['password'], 'r') as f:
+                tmp = {}
+                tmp['path'] = self._path_resolver(self.editable['password'], 'path')
+                if tmp['path'].is_file():
+                    with open(tmp['path'], 'r') as f:
                         self.editable['password'] = f.read()
-                else:
-                    self.editable['password'] = str(self.editable['password'])
+                        print("debug")
         
 
 
@@ -141,7 +141,8 @@ class Parser():
 
 
 
-    def _path_resolver(self, value: Path, key: str) -> Path:
+# TODO: Improve
+    def _path_resolver(self, value, key: str) -> Path:
         '''
         Resolves a given file path to an absolute path.
 
@@ -157,7 +158,9 @@ class Parser():
             if not value.is_absolute():
                 value = Path.home() / value
                 value = value.resolve()
+            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report']:
                 self.editable[key] = value
-
-
+                return
+            else:
+                return value
 
