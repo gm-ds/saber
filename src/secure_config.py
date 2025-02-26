@@ -38,7 +38,7 @@ class SecureConfig:
         self.tool_name = tool_name
         self.b_tool_name = tool_name.encode('utf-8')
         self.mngt = b"# MANAGED BY " + self.b_tool_name + b" #\n"
-        if config_path is not None:
+        if config_path != None:
             self.config_path = config_path if isinstance(config_path, Path) else Path(config_path)
         else:
             self.config_path = self._get_default_config_path()
