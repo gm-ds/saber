@@ -134,7 +134,7 @@ class Parser():
         for p in args_path:
             if isinstance(p[0], Path) and p[0] is not None:
                 self._path_resolver(p[0], p[1])
-                if p[0].suffix in (".yaml", ".yml") and p[1].is_file():
+                if p[0].suffix in (".yaml", ".yml") and p[0].is_file():
                     pass
                 else:
                     self.parser.error("This Path does not point to a valid YAML file")
