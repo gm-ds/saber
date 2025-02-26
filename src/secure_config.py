@@ -36,6 +36,8 @@ class SecureConfig:
         :type config_path: Path, optional
         '''
         self.tool_name = tool_name
+        self.b_tool_name = tool_name.encode('utf-8')
+        self.mngt = b"# MANAGED BY " + self.b_tool_name + b" #\n"
         self.config_path = Path(config_path) if config_path else self._get_default_config_path()
         self._fernet: Optional[Fernet] = None
 
@@ -154,27 +156,20 @@ class SecureConfig:
         '''
         Checks whether the configuration file is encrypted.
 
-        The function attempts to decrypt the configuration file using the stored encryption key.
-        If decryption is successful, the file is considered encrypted. If decryption fails the 
-        function assumes the file is not encrypted or encrypted with another key.
+        The function check for the presence of a string at the beginning of the file.
+        If present the function assumes that the file is encrypted by the same python tool.
 
-        :return: True if the configuration file is encrypted with the current key, otherwise False.
+        :return: True if the configuration file is encrypted, otherwise False.
         :rtype: bool
         '''
-        
-        if not self.config_path.exists():
-            return False
-            
-        if not self._fernet:
-            return False  # WARNING: Can't check encryption without an initialized key
-            
         try:
             with open(self.config_path, 'rb') as f:
-                data = f.read()
+                data = f.readline()
                 
-            # Try to decrypt the data - if it works, it was encrypted
-            self._fernet.decrypt(data)
-            return True
+            if data == self.mngt:
+                return True
+            else:
+                return False
             
         except Exception:
             return False
@@ -242,6 +237,9 @@ class SecureConfig:
             # Read and validate the existing YAML file
             with open(self.config_path, 'rb') as f:
                 yaml_data = f.read()
+    
+            if yaml_data and not yaml_data.endswith(b"\n"):
+                yaml_data += b"\n"
             
             # Validate YAML format before encryption
             try:
@@ -250,7 +248,7 @@ class SecureConfig:
                 raise ValueError("Invalid YAML data in configuration file")
                     
             # Encrypt the existing content
-            encrypted_data = self.encrypt_data(yaml_data)
+            encrypted_data = self.mngt + self.encrypt_data(yaml_data) + b"\n"
 
             self._write_file(encrypted_data)
 
@@ -263,20 +261,28 @@ class SecureConfig:
         '''
         Decrypt an existing configuration YAML file.
         '''
-        if not self._fernet:
-            raise ValueError("Encryption not initialized. Call initialize_encryption first.")
-            
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file {self.config_path} not found")
             
-        if not self.is_encrypted():
-            return
+        if self.is_encrypted():
+            if not self._fernet:
+                raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
-        with open(self.config_path, 'rb') as f:
-            encrypted_data = f.read()
-        
-        decrypted_data = self.decrypt_data(encrypted_data)
-        self._write_file(decrypted_data)
+            with open(self.config_path, 'rb') as f:
+                f.readline()
+                encrypted_data = f.read()
+                if encrypted_data.endswith(b"\n"):
+                    encrypted_data = encrypted_data[:-1]
+                        
+            decrypted_data = self.decrypt_data(encrypted_data)
+            if decrypted_data and not decrypted_data.endswith(b"\n"):
+                decrypted_data += b"\n"
+
+            self._write_file(decrypted_data)
+            
+        else:
+            
+            return
 
         
     
@@ -291,11 +297,13 @@ class SecureConfig:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
             
         yaml_data = yaml.dump(config_data).encode()
+
+        if yaml_data and not yaml_data.endswith(b"\n"):
+            yaml_data += b"\n"
+
+        encrypted_data = self.mngt + self.encrypt_data(yaml_data) + b"\n"
         
-        encrypted_data = self.encrypt_data(yaml_data)
-        
-        with open(self.config_path, 'wb') as f:
-            f.write(encrypted_data)
+        self._write_file(encrypted_data)
 
         self._set_secure_permissions()
 
@@ -307,22 +315,28 @@ class SecureConfig:
 
         :return: Configuration dictionary
         :rtype: dict
-        '''
-        if not self._fernet:
-            raise ValueError("Encryption not initialized. Call initialize_encryption first.")
-            
+        ''' 
         if not self.config_path.exists():
             raise ValueError(f"File does not exists. Check the following path: {self.config_path}")
 
-        try:     
-            with open(self.config_path, 'rb') as f:
-                data = f.read()
-                
+        try:
             if self.is_encrypted():
+                if not self._fernet:
+                    raise ValueError("Encryption not initialized. Call initialize_encryption first.")
+                
+                with open(self.config_path, 'rb') as f:
+                    f.readline()
+                    data = f.read()
+                    if data.endswith(b"\n"):
+                        data = data[:-1]
                 decrypted_data = self.decrypt_data(data)
                 return yaml.safe_load(decrypted_data)
             
-            return yaml.safe_load(data)
+            else:
+                with open(self.config_path, 'rb') as f:
+                    data = f.read()
+                return yaml.safe_load(data)
+        
         except PermissionError as e:
             raise ValueError(f"Cannot access configuration file: {e}") from e
         
