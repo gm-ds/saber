@@ -92,15 +92,26 @@ def main():
 
             for pe in useg['endpoints']:
                 galaxy_instance.switch_pulsar(pe)
+                compute_id = f"ComputeID_{pe if pe != 'None' else 'Default'}"
+
                 if useg['name'] not in results:
-                    results[useg['name']] = {"SUCCESSFUL_JOBS": {}, "TIMEOUT_JOBS": {}, "FAILED_JOBS": {}}
+                    results[useg['name']] = {}
+
+                if compute_id not in results[useg['name']]:
+                    results[useg['name']][compute_id] = {
+                        "SUCCESSFUL_JOBS": {}, 
+                        "TIMEOUT_JOBS": {}, 
+                        "FAILED_JOBS": {}
+                    }
+
                 pre_results = galaxy_instance.execute_and_monitor_workflow(
                     workflow_input = input
                     )
                 for key in ["SUCCESSFUL_JOBS", "TIMEOUT_JOBS", "FAILED_JOBS"]:
                     if key in pre_results and isinstance(pre_results[key], dict):
-                        results[useg['name']][key].update(pre_results[key])  
+                        results[useg['name']][compute_id][key].update(pre_results[key])
 
+                
             logger.info("Cleaning Up...")
             galaxy_instance.purge_histories()
             galaxy_instance.purge_workflow()
@@ -127,13 +138,16 @@ def main():
             logger.warning("Skipping to the next instance")
 
     print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
-    for r in results.values():
-        if r.get("TIMEOUT_JOBS"):
-            logger.warning(f"At least one job reached timeout, exiting with: {TIMEOUT_EXIT}")
-            sys.exit(TIMEOUT_EXIT)
-        if r.get("FAILED_JOBS"):
-            logger.warning(f"At least one job failed, exiting with: {JOB_ERR_EXIT}")
-            sys.exit(JOB_ERR_EXIT)
+    for g_name, g_data in results.items():
+        for com_id, job_data in g_data.items():
+            if job_data.get("TIMEOUT_JOBS"):
+                logger.warning(f"Timeout jobs found in {g_name}/{com_id}: {job_data['TIMEOUT_JOBS']}")
+                logger.warning(f"Exiting with code: {TIMEOUT_EXIT}")
+                sys.exit(TIMEOUT_EXIT)
+            if job_data.get("FAILED_JOBS"):
+                logger.warning(f"Failed jobs found in {g_name}/{com_id}: {job_data['FAILED_JOBS']}")
+                logger.warning(f"Exiting with code: {JOB_ERR_EXIT}")
+                sys.exit(JOB_ERR_EXIT)
     sys.exit(0)
 
 
