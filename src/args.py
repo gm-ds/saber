@@ -141,7 +141,6 @@ class Parser():
 
 
 
-# TODO: Improve
     def _path_resolver(self, value, key: str) -> Path:
         '''
         Resolves a given file path to an absolute path.
@@ -154,13 +153,13 @@ class Parser():
         if value is not None:
             if not isinstance(value, Path):
                 value = Path(value)
-            value = value.expanduser() if not value.is_absolute() else value
-            if not value.is_absolute():
-                value = Path.home() / value
-                value = value.resolve()
+            value = value.expanduser() 
+            value = value.resolve()
+
             if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report']:
                 self.editable[key] = value
-                return
+                return None
             else:
                 return value
+        return None
 

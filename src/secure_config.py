@@ -72,7 +72,7 @@ class SecureConfig:
             return settings_path_yaml
         elif settings_path_yml.is_file():
             return settings_path_yml
-        raise SystemExit(f"settings.yaml does not exists, please check {config_dir}.\
+        raise SystemExit(f"settings.yaml does not exists, please check {config_dir}\
                          \nOr make a new one with 'saber -x' and 'saber -e PATH'")
 
 

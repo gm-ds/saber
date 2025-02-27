@@ -11,7 +11,7 @@ def print_example():
 
 
 def main():
-    from src.args import Parser
+    from src.args import Parser, Path
     from src.logger import CustomLogger
     from src.secure_config import SecureConfig
     from src.bioblend_testjobs import GalaxyTest, json
@@ -32,8 +32,12 @@ def main():
 
             
         # Initialize secure configuration
-        safe_config = SecureConfig(TOOL_NAME)
-        safe_config.initialize_encryption(args.password)
+        if args.settings is None:
+            safe_config = SecureConfig(TOOL_NAME)
+            safe_config.initialize_encryption(args.password)
+        else:
+            safe_config = SecureConfig(TOOL_NAME, args.settings)
+            safe_config.initialize_encryption(args.password)
         
         # Manage -cryption and edit flags and ops
         # TODO: tests!!!!!
@@ -44,22 +48,20 @@ def main():
             logger.info(f"File encrypted: {args.encrypt}")
             sys.exit(0)
         
-        if args.decrypt:
+        elif args.decrypt:
             safe_config = SecureConfig(TOOL_NAME, args.decrypt)
             safe_config.initialize_encryption(args.password)
             safe_config.decrypt_existing_file()
             logger.info(f"File decrypted: {args.decrypt}")
             sys.exit(0)
             
-        if args.edit:
+        elif args.edit:
             safe_config = SecureConfig(TOOL_NAME, args.edit)
             safe_config.initialize_encryption(args.password)
             safe_config.edit_config()
             sys.exit(0)
             
-        if args.settings:
-            safe_config = SecureConfig(TOOL_NAME, args.settings)
-            safe_config.initialize_encryption(args.password)
+
             
     except (ValueError, PermissionError) as e:
         logger.error(f"An error occurred with configuration: {e}")
@@ -67,7 +69,7 @@ def main():
 
 
     config = safe_config.load_config()
-    config["config_path"] = safe_config.get_config_path()
+    config["config_path"] = str(safe_config.get_config_path())
 
     for i in range(len(config['usegalaxy_instances'])):
 

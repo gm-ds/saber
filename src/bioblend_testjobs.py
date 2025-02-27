@@ -205,11 +205,21 @@ class GalaxyTest():
         if not wf_path.is_absolute():
             config_path = self.config.get('config_path', None)
             if config_path:
-                wf_path = Path(config_path).parent / wf_path
+                c_wf_path = Path(config_path).parent / wf_path
+                c_wf_path = c_wf_path.resolve()
+                if c_wf_path.exists():
+                    wf_path = c_wf_path
+                else:
+                    wd_wf_path = Path.cwd() / wf_path  # Fall back to CWD
+                    wd_wf_path = wd_wf_path.resolve()
+                    if wd_wf_path.exists():
+                        wf_path = wd_wf_path
             else:
-                wf_path = Path.cwd() / wf_path  # Fall back to CWD
+                wd_path = Path.cwd() / wf_path  # Fall back to CWD
+                wd_path = wd_path.resolve()
+                if wd_path.exists():
+                    wf_path = wd_path
 
-        wf_path = wf_path.resolve()
 
         if wf_path.exists():
             self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
