@@ -403,7 +403,7 @@ class GalaxyTest():
             if p_endpoint == "None":
                 p_endpoint = "Default"
             self.logger.update_log_context( name, p_endpoint)
-            self.logger.info(f"Testing pulsar endpoint {p_endpoint} "
+            self.logger.info(f"Switching to pulsar endpoint {p_endpoint} "
                         f"from {name} instance")
 
 
