@@ -52,13 +52,14 @@ usegalaxy_instances:
       - "changeme"  # Define the specific endpoints required
       - "changeme"
     # Optional: If authentication via email/password is needed, uncomment and set values
-    # If API is defined it alway be used first
+    # If API is defined it is always used first
     # email: "user@example.com"
     # password: "password"
     
     default_compute_id: "None"  # Default non-remote compute
     maxwait: 12000  # Upload timeout in milliseconds
-    interval: 5  # Time (seconds) between state checks
+    interval: 5  # Time (seconds) between uploads state checks
+    sleep_time: 5 # Time between jobs states checks
 
 # Global settings (can be overridden per instance)
 ga_path: "/absolute/path"  # Define path to workflow .ga file
@@ -67,6 +68,6 @@ data_inputs:
     url: "change_me"  # Replace with the data source URL
     file_type: "change_me"  # Correct file type
 
-timeout: 1200  # General timeout value (units unclear, confirm if seconds)
+timeout: 1200  # General timeout value, seconds
 
 """
