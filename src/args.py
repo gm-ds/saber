@@ -62,6 +62,7 @@ class Parser():
                 tmp = self.editable['example_settings']
                 self.editable = {key: None for key in self.editable}
                 self.editable['example_settings'] = tmp
+                self.editable['example_settings'] = self.editable['example_settings'].strip()
 
 
 
