@@ -34,7 +34,7 @@ class GalaxyTest():
     def __init__(self, url: str, key: str, email: str = None, gpassword: str = None, 
                  config: dict = None, class_logger = None):
         #Initialize GalaxyInstance
-        self.logger = class_logger if not isinstance(class_logger, CustomLogger) else  CustomLogger(TOOL_NAME)
+        self.logger = class_logger if isinstance(class_logger, CustomLogger) else  CustomLogger(TOOL_NAME)
         self.gi = GalaxyInstance(url, email, gpassword) if ((email is not None) and (gpassword is not None)) else GalaxyInstance(url, key)
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
