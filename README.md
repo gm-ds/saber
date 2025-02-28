@@ -15,29 +15,32 @@
     Not yet implemented
 
 - `-r`, `--html_report`
-    Generate an HTML report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.html
+    Generates an HTML report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.html
     Not yet implemented
+
+- `-l`, `--log_dr`
+    Generates the log file in the given directory. If a file path is given instead of a directory, the name of the file, without suffix, is used to make a new directory for `saber.log`.
 
 ### Mutually Exclusive Group
 
 - `-e`, `--edit`
-    Open and edit an encrypted YAML file (auto-encrypt after editing). Not yet thoroughly tested.
+    Opens and edits an encrypted YAML file (auto-encrypt after editing). Not yet thoroughly tested.
 
 - `-c`, `--encrypt`
-    Encrypt a given YAML file. Not yet thoroughly tested.
+    Encrypts a given YAML file. Not yet thoroughly tested.
 
 - `-d`, `--decrypt`
-    Decrypt a given YAML file. Not yet thoroughly tested.
+    Decrypts a given YAML file. Not yet thoroughly tested.
 
 - `-s`, `--settings`
-    Specify the settings YAML file path. Default: `~/.config/saber/settings.yaml`
+    Custom settings YAML file path. Default: `~/.config/saber/settings.yaml`
 
 - `-x`, `--example_settings`
-    Print an example configuration.
+    Prints an example configuration.
 
 
 ## Configuration
-An example of configuration can be printed using the `-x` argument when launching the script. By default SABER will try to search in `~/.config/saber/settings.yaml` or `.yaml`. If the file is not found it prints an error message.
+An example of configuration can be printed using the `-x` argument when launching the script, the same example can be found in the root of this repository. By default SABER will try to search in `~/.config/saber/settings.yaml` or `.yaml`. If the file is not found it prints an error message.
 
 All variables under `usegalaxy_instances` will overwrite upper level values, leaving the possibility to tailor test jobs between Galaxy instances and Pulsar Endpoints.
 A workflow file is still needed.
@@ -57,7 +60,7 @@ The Galaxy server being currently tested is displayed in brackets along with the
 
 ## TODO
 - HTML report
-- Multiple Job Support; WIP
+- ~~Multiple Job Support; WIP~~
 - Improve errors handling
 - InfluxDB support
 - ~~Comments and Docs~~
