@@ -19,12 +19,12 @@ def main():
 
 
     results = dict()
-    logger = CustomLogger(TOOL_NAME)
-    logger.info("Starting...")
-
 
     try:
         args = Parser(P, CONFIG_PATH).arguments()
+
+        logger = CustomLogger(TOOL_NAME, args.log_dir)
+        logger.info("Starting...")
 
         if args.example_settings:
             print_example()

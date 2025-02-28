@@ -18,6 +18,9 @@ class Parser():
                             default=Path.joinpath(Path.home(), f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html'), 
                                                         help='Enables HTML report, it accepts a path for the output:/path/report.html\
                                                             \nDefaults to \'~/saber_report_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
+        self.parser.add_argument('-l', '--log_dir', metavar='LOG DIRECTORY', type=Path,
+                                 help='Custom log DIRECTORY. Defaults depends on the platform. \nMacOS: "/Users/<your-user>/Library/Logs/<tool-name>"\
+                                    \n Windows: "C:\\Users\\<your-user>\\<tool-name>\\Local\\Acme\\<tool-name>\\Logs" \nLinux: "/home/<your-user>/.local/state/<tool-name>/log"' )
         self.group = self.parser.add_mutually_exclusive_group()
         self.group.add_argument('-e', '--edit', metavar='PATH', type=Path, help='Open the default editor to edit the existing encrypted YAML file,\
                                                             \nalways encrypt the file after editing. Defaults to nano.')
@@ -121,6 +124,7 @@ class Parser():
                 (self.editable['settings'], 'settings')
             ]
             self._safety_check(paths)
+            self._path_resolver(self.editable['log_dir'], 'log_dir')
 
 
 
@@ -157,7 +161,7 @@ class Parser():
             value = value.expanduser() 
             value = value.resolve()
 
-            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report']:
+            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report', 'log_dir']:
                 self.editable[key] = value
                 return None
             else:

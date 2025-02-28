@@ -3,6 +3,7 @@
 import os
 import logging
 import platform
+from pathlib import Path
 from platformdirs import user_log_dir
 
 
@@ -31,7 +32,7 @@ class CustomLogger():
     :type init_log_name: str
     :param init_log_name: logger's name.
     '''
-    def __init__(self, init_log_name: str):
+    def __init__(self, init_log_name: str, dir: Path = None):
         '''
         Custom Logger
 
@@ -46,11 +47,11 @@ class CustomLogger():
 
         # Initialize actual logger
         self._logger = None
-        self._setup_logging()
+        self._setup_logging(dir)
 
     
 
-    def _setup_logging(self):
+    def _setup_logging(self, log_dir: Path = None):
         '''
         Set up logging with customs formatter, handlers and syslog.
         Log are set up with file rotation: every midnight if file is older than 7 day 
@@ -59,7 +60,11 @@ class CustomLogger():
         '''
         log_name = f"{self._log_name}.log"
         try:
-            if os.geteuid() == 0:
+            if log_dir is not None:
+                log_dir = (log_dir.parent / log_dir.stem) if log_dir.suffix != "" else log_dir
+                os.makedirs(log_dir, exist_ok=True)
+                log_file = str(log_dir) + "/" + log_name
+            elif os.geteuid() == 0:
                 log_dir = "/var/log/saber"
                 os.makedirs(log_dir, exist_ok=True)
                 log_file = f"/var/log/saber/{log_name}"
