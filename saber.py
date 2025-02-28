@@ -141,11 +141,11 @@ def main():
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():
             if job_data.get("TIMEOUT_JOBS"):
-                logger.warning(f"Timeout jobs found in {g_name}/{com_id}: {job_data['TIMEOUT_JOBS']}")
+                logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
                 logger.warning(f"Exiting with code: {TIMEOUT_EXIT}")
                 sys.exit(TIMEOUT_EXIT)
             if job_data.get("FAILED_JOBS"):
-                logger.warning(f"Failed jobs found in {g_name}/{com_id}: {job_data['FAILED_JOBS']}")
+                logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
                 logger.warning(f"Exiting with code: {JOB_ERR_EXIT}")
                 sys.exit(JOB_ERR_EXIT)
     sys.exit(0)
