@@ -65,7 +65,6 @@ class Parser():
                 tmp = self.editable['example_settings']
                 self.editable = {key: None for key in self.editable}
                 self.editable['example_settings'] = tmp
-                self.editable['example_settings'] = self.editable['example_settings'].strip()
 
 
 
@@ -77,6 +76,7 @@ class Parser():
         temp_pswd = os.getenv('SABER_PASSWORD')
         if self.editable['password'] == self.place_holder and  temp_pswd is not None:
             self.editable['password'] = temp_pswd
+            self.editable['password'] = self.editable['password'].strip()
 
 
 
