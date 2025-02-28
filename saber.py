@@ -11,7 +11,7 @@ def print_example():
 
 
 def main():
-    from src.args import Parser, Path
+    from src.args import Parser
     from src.logger import CustomLogger
     from src.secure_config import SecureConfig
     from src.bioblend_testjobs import GalaxyTest, json
@@ -92,7 +92,7 @@ def main():
 
             for pe in useg['endpoints']:
                 galaxy_instance.switch_pulsar(pe)
-                compute_id = f"ComputeID_{pe if pe != 'None' else 'Default'}"
+                compute_id = pe if pe != 'None' else 'Default'
 
                 if useg['name'] not in results:
                     results[useg['name']] = {}
@@ -137,7 +137,12 @@ def main():
                 sys.exit(GAL_ERROR)
             logger.warning("Skipping to the next instance")
 
-    print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
+    if args.html_report:
+        from src.html_output import html_output
+        html_output(args.html_report, results)
+    else:
+        print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
+
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():
             if job_data.get("TIMEOUT_JOBS"):

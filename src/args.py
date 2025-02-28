@@ -5,6 +5,8 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
+HTML_DEFAULT = Path.home().joinpath(f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')
+
 
 class Parser():
     def __init__(self, place_holder: str, mock_conf_path: str):
@@ -15,8 +17,7 @@ class Parser():
         self.parser.add_argument('-i', '--influxdb', action='store_true', help='Send metrics to InfluxDB when the argument is used.\
                                   Credentials must be defined in configuration file.')
         self.parser.add_argument('-r', '--html_report', metavar='PATH', type=Path, nargs='?',
-                            default=Path.joinpath(Path.home(), f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html'), 
-                                                        help='Enables HTML report, it accepts a path for the output:/path/report.html\
+                            const= HTML_DEFAULT, help='Enables HTML report, it accepts a path for the output:/path/report.html\
                                                             \nDefaults to \'~/saber_report_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
         self.parser.add_argument('-l', '--log_dir', metavar='LOG DIRECTORY', type=Path,
                                  help='Custom log DIRECTORY. Defaults depends on the platform. \nMacOS: "/Users/<your-user>/Library/Logs/<tool-name>"\
