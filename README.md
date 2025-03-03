@@ -16,7 +16,7 @@
 
 - `-r`, `--html_report`
     Generates an HTML report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.html
-    Not yet implemented
+    Implementation in progress
 
 - `-l`, `--log_dr`
     Generates the log file in the given directory. If a file path is given instead of a directory, the name of the file, without suffix, is used to make a new directory for `saber.log`.
@@ -59,8 +59,6 @@ A brief log example:
 The Galaxy server being currently tested is displayed in brackets along with the pulsar endpoint. The `TBD` values is used during Galaxy Instance initialization. The `Default` endpoint correspond to the local compute of the server, it is used during dataset uploads.
 
 ## TODO
-- HTML report
-- ~~Multiple Job Support; WIP~~
 - Improve errors handling
 - InfluxDB support
 - ~~Comments and Docs~~
@@ -68,3 +66,5 @@ The Galaxy server being currently tested is displayed in brackets along with the
 - ~~Improve logging~~
 - ~~REFACTOR~~
 - ~~argparse~~
+- ~~Multiple Job Support; WIP~~
+- ~~HTML report~~
