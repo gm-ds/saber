@@ -68,3 +68,5 @@ The Galaxy server being currently tested is displayed in brackets along with the
 - ~~argparse~~
 - ~~Multiple Job Support; WIP~~
 - ~~HTML report~~
+
+
