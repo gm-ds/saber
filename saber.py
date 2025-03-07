@@ -140,8 +140,8 @@ def main():
     if args.html_report:
         from src.html_output import html_output
         html_output(args.html_report, results)
-    else:
-        print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
+
+    print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
 
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():

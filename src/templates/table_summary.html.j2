@@ -1,0 +1,200 @@
+{% if standalone %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        .job-status-ok {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .job-status-failed {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .job-status-timeout {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .metric-row:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .server-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .table-container {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+            }
+
+        .table-container h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .custom-table th, .custom-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .custom-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .custom-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .custom-table tbody tr:hover {
+            background-color: #eaf2f8;
+        }
+
+        .table-status-ok {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+
+        .table-status-failed {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .table-status-timeout {
+              color: #f39c12;
+              font-weight: bold;
+          }
+    </style>
+</head>
+    <body>
+{% endif %}
+<!-- Summary Table -->
+<div class="table-container">
+    <div class="server-header">
+        <h2>Summary</h2>
+    </div>
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Endpoint</th>
+                <th>Status</th>
+                <th>Tested on</th>
+                <!-- <th>Resources</th> -->
+                <th>Available at</th>
+            </tr>
+        </thead>            
+        <tbody>
+            {% set current_endpoint = None %}
+            {% set current_available_at = None %}
+            {% set endpoint_row_counts = {} %}
+            
+            {# Calculate rowspans #}
+            {% for available_at, endpoints_data in compute_data.items() %}
+                {% for endpoint, jobs_data in endpoints_data.items() %}
+                    {% set all_jobs_count = jobs_data.get('SUCCESSFUL_JOBS', {})|length + 
+                                            jobs_data.get('FAILED_JOBS', {})|length + 
+                                            jobs_data.get('TIMEOUT_JOBS', {})|length %}
+                    
+                    {% if (endpoint, available_at) not in endpoint_row_counts %}
+                        {% set _ = endpoint_row_counts.update({(endpoint, available_at): all_jobs_count}) %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            
+            {# Render the table #}
+            {% for available_at, endpoints_data in compute_data.items() %}
+                {% for endpoint, jobs_data in endpoints_data.items() %}
+                    {# Combine all job types into one dict #}
+                    {% set all_jobs = {} %}
+                    {% for job_id, job_data in jobs_data.get('SUCCESSFUL_JOBS', {}).items() %}
+                        {% set _ = all_jobs.update({job_id: {'data': job_data, 'status': 'Success', 'type': 'SUCCESSFUL_JOBS'}}) %}
+                    {% endfor %}
+                    {% for job_id, job_data in jobs_data.get('FAILED_JOBS', {}).items() %}
+                        {% set _ = all_jobs.update({job_id: {'data': job_data, 'status': 'Failed', 'type': 'FAILED_JOBS'}}) %}
+                    {% endfor %}
+                    {% for job_id, job_data in jobs_data.get('TIMEOUT_JOBS', {}).items() %}
+                        {% set _ = all_jobs.update({job_id: {'data': job_data, 'status': 'Timeout', 'type': 'TIMEOUT_JOBS'}}) %}
+                    {% endfor %}
+                    
+                    {% for job_id, job_info in all_jobs.items() %}
+                        <tr>
+                            {% if loop.first %}
+                                <td rowspan="{{ endpoint_row_counts[(endpoint, available_at)] }}">{{ endpoint }}</td>
+                            {% endif %}
+                            
+                            <td class="{% if job_info.type == 'SUCCESSFUL_JOBS' %}job-status-ok
+                                        {% elif job_info.type == 'FAILED_JOBS' %}job-status-failed
+                                        {% else %}job-status-timeout{% endif %}">
+                                {{ job_info.status }}
+                            </td>
+                            <td>{{ job_info.data.INFO.tool_id }}</td>
+                            <!-- <td>{{ job_info.data.INFO.resources }}</td> -->
+                            
+                            {% if loop.first %}
+                                <td rowspan="{{ endpoint_row_counts[(endpoint, available_at)] }}">{{ available_at }}</td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if standalone %}
+    </body>
+</html>
+{% endif %}
