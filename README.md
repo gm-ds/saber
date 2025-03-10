@@ -10,12 +10,11 @@
 - `-p`, `--password`
     Password for encrypting/decrypting the settings YAML file. Always required with `-e`, `-c`, `-d` and if the settings are encrypted.
 
-- `-i`, ``--influxdb``
-    Send metrics to InfluxDB (requires credentials in the config file).
-    Not yet implemented
-
 - `-r`, `--html_report`
     Generates an HTML report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.html
+
+- `-t`, `--table_html_report`
+    Generates an HTML summarized report in form of a table. Accepts a custom file path. Default: ~/saber_summary_YYYY-MM-DD_HH-MM-SS.html
     Implementation in progress
 
 - `-l`, `--log_dr`
@@ -60,7 +59,6 @@ The Galaxy server being currently tested is displayed in brackets along with the
 
 ## TODO
 - Improve errors handling
-- InfluxDB support
 - ~~Comments and Docs~~
 - ~~Switch to yaml config file to not rely on input.json~~
 - ~~Improve logging~~
