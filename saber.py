@@ -139,13 +139,13 @@ def main():
 
     if args.html_report:
         from src.html_output import HTML
-        report = HTML(args.html_report, results)
+        report = HTML(args.html_report, results, config)
         report.output_page()
 
     if args.table_html_report:
         from src.html_output import HTML
-        summary = HTML(args.table_html_report, results)
-        summary.output_summary()
+        summary = HTML(args.table_html_report, results, config)
+        summary.output_summary(True)
 
     print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
 

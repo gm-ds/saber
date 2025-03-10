@@ -2,12 +2,12 @@
 
 from src.logger import os
 from src. secure_config import tempfile, Path
-from src.bioblend_testjobs import json
 
 class HTML:
-    def __init__(self, path: Path, dict_results: dict):
+    def __init__(self, path: Path, dict_results: dict, configuration: dict):
         self.path = path
         self.saber_results = dict_results
+        self.config = configuration
 
     def _write_file(self, html):
         try:
@@ -43,59 +43,81 @@ class HTML:
 
 
 
-    def output_page(self) -> None:
-        from jinja2 import Template
-
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        template_path = os.path.join(script_dir, 'templates', 'galaxy_template.html.j2')
-        table_path = os.path.join(script_dir, 'templates', 'table_summary.html.j2')
-
-        with open(template_path, 'r') as f:
-            template_str = f.read()
-
-        with open(table_path, 'r') as f:
-            template_table_str = f.read()
-
-        table_template = Template(template_table_str)
-        template = Template(template_str)
-
+    def _process_data(self) -> dict:
         endpoint_counts = {}
+        instances_counts = {}
+        urls = {}
+        pies = {}
         compute_data = self.saber_results
         # Parse the data structure
         for available_at, endpoints_data in compute_data.items():
             for endpoint, jobs_data in endpoints_data.items():
                 job_types = ["SUCCESSFUL_JOBS", "FAILED_JOBS", "TIMEOUT_JOBS"]
+
+                instances_counts.setdefault(available_at, 0)
+                instances_counts[available_at] += 1
+
+                if available_at not in pies:
+                    pies[available_at] = {}
+                if endpoint not in pies[available_at]:
+                    pies[available_at][endpoint] = {}
+
+                pies[available_at][endpoint]['tot'] = (len(jobs_data.get("TIMEOUT_JOBS", {})) + 
+                                                       len(jobs_data.get("FAILED_JOBS", {})) + len(jobs_data.get("SUCCESSFUL_JOBS", {})))
+                pies[available_at][endpoint]['success'] = (len(jobs_data.get("SUCCESSFUL_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+                pies[available_at][endpoint]['failed'] = (len(jobs_data.get("FAILED_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+                pies[available_at][endpoint]['timeout'] = (len(jobs_data.get("TIMEOUT_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+            
+
                 for job_type in job_types:
+                    jobs = None
                     if hasattr(jobs_data, job_type) and isinstance(getattr(jobs_data, job_type), dict):
                         jobs = getattr(jobs_data, job_type)
                     elif isinstance(jobs_data, dict) and job_type in jobs_data:
                         jobs = jobs_data[job_type]
-                    else:
+                        
+                    if not jobs:
                         continue
                         
                     for job_id in jobs:
                         key = (endpoint, available_at)
-                        
-                        if key not in endpoint_counts:
-                            endpoint_counts[key] = 0
-                            
+                        endpoint_counts.setdefault(key, 0)
                         endpoint_counts[key] += 1
 
-        template_context = {
+
+        for i in self.config['usegalaxy_instances']:
+            urls[i['name']] = i['url']
+
+        return {
             "compute_data": compute_data,
-            "endpoint_counts": endpoint_counts
+            "endpoint_counts": endpoint_counts,
+            "instances_counts": instances_counts,
+            "urls": urls,
+            "cherry": pies
         }
 
 
+
+    def output_page(self) -> None:
+        from jinja2 import Template
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(script_dir, 'templates', 'galaxy_template.html.j2')
+
+        with open(template_path, 'r') as f:
+            template_str = f.read()
+
+        template = Template(template_str)
+
         # Render 
-        rendered_html = table_template.render(**template_context, standalone=False)
+        rendered_html = self.output_summary(standalone=False)
         page_rendered_html = template.render(data=self.saber_results, rendered_html=rendered_html)
 
         self._write_file(page_rendered_html)
 
 
 
-    def output_summary(self) -> None:
+    def output_summary(self, standalone: bool):
         from jinja2 import Template
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -105,35 +127,13 @@ class HTML:
             template_table_str = f.read()
 
         table_template = Template(template_table_str)
+        template_context = self._process_data()
 
-        endpoint_counts = {}
-        compute_data = self.saber_results
-        # Parse the data structure
-        for available_at, endpoints_data in compute_data.items():
-            for endpoint, jobs_data in endpoints_data.items():
-                job_types = ["SUCCESSFUL_JOBS", "FAILED_JOBS", "TIMEOUT_JOBS"]
-                for job_type in job_types:
-                    if hasattr(jobs_data, job_type) and isinstance(getattr(jobs_data, job_type), dict):
-                        jobs = getattr(jobs_data, job_type)
-                    elif isinstance(jobs_data, dict) and job_type in jobs_data:
-                        jobs = jobs_data[job_type]
-                    else:
-                        continue
-                        
-                    for job_id in jobs:
-                        key = (endpoint, available_at)
-                        
-                        if key not in endpoint_counts:
-                            endpoint_counts[key] = 0
-                            
-                        endpoint_counts[key] += 1
-
-        template_context = {
-            "compute_data": compute_data,
-            "endpoint_counts": endpoint_counts
-        }
+        # Render
+        rendered_html = table_template.render(**template_context, standalone=standalone)
 
 
-        # Render 
-        rendered_html = table_template.render(**template_context, standalone=True)
-        self._write_file(rendered_html)
+        if standalone:
+            self._write_file(rendered_html)
+        else:
+            return rendered_html

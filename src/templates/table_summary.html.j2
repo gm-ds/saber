@@ -130,67 +130,54 @@
     <table class="custom-table">
         <thead>
             <tr>
-                <th>Endpoint</th>
-                <th>Status</th>
-                <th>Tested on</th>
-                <!-- <th>Resources</th> -->
+                <th>Pulsar Endpoint</th>
                 <th>Available at</th>
+                <th style="
+                        text-align: center; /* Center the pie chart */
+                        padding: 10px; /* Add some padding */
+                        "
+                        >Status</th>
             </tr>
         </thead>            
         <tbody>
-            {% set current_endpoint = None %}
             {% set current_available_at = None %}
-            {% set endpoint_row_counts = {} %}
-            
-            {# Calculate rowspans #}
+            {% set current_endpoint = None %}
             {% for available_at, endpoints_data in compute_data.items() %}
                 {% for endpoint, jobs_data in endpoints_data.items() %}
-                    {% set all_jobs_count = jobs_data.get('SUCCESSFUL_JOBS', {})|length + 
-                                            jobs_data.get('FAILED_JOBS', {})|length + 
-                                            jobs_data.get('TIMEOUT_JOBS', {})|length %}
-                    
-                    {% if (endpoint, available_at) not in endpoint_row_counts %}
-                        {% set _ = endpoint_row_counts.update({(endpoint, available_at): all_jobs_count}) %}
-                    {% endif %}
-                {% endfor %}
-            {% endfor %}
-            
-            {# Render the table #}
-            {% for available_at, endpoints_data in compute_data.items() %}
-                {% for endpoint, jobs_data in endpoints_data.items() %}
-                    {# Combine all job types into one dict #}
-                    {% set all_jobs = {} %}
-                    {% for job_id, job_data in jobs_data.get('SUCCESSFUL_JOBS', {}).items() %}
-                        {% set _ = all_jobs.update({job_id: {'data': job_data, 'status': 'Success', 'type': 'SUCCESSFUL_JOBS'}}) %}
-                    {% endfor %}
-                    {% for job_id, job_data in jobs_data.get('FAILED_JOBS', {}).items() %}
-                        {% set _ = all_jobs.update({job_id: {'data': job_data, 'status': 'Failed', 'type': 'FAILED_JOBS'}}) %}
-                    {% endfor %}
-                    {% for job_id, job_data in jobs_data.get('TIMEOUT_JOBS', {}).items() %}
-                        {% set _ = all_jobs.update({job_id: {'data': job_data, 'status': 'Timeout', 'type': 'TIMEOUT_JOBS'}}) %}
-                    {% endfor %}
-                    
-                    {% for job_id, job_info in all_jobs.items() %}
                         <tr>
+                            <td>{{ endpoint }}</td>
                             {% if loop.first %}
-                                <td rowspan="{{ endpoint_row_counts[(endpoint, available_at)] }}">{{ endpoint }}</td>
+                                <td 
+                                style="
+                                        text-align: center;
+                                        padding: 10px;
+                                        "
+                                rowspan="{{ instances_counts[available_at] }}"> 
+                                <a href="{{urls[available_at]}}">{{ available_at }}</a></td>
                             {% endif %}
-                            
-                            <td class="{% if job_info.type == 'SUCCESSFUL_JOBS' %}job-status-ok
-                                        {% elif job_info.type == 'FAILED_JOBS' %}job-status-failed
-                                        {% else %}job-status-timeout{% endif %}">
-                                {{ job_info.status }}
-                            </td>
-                            <td>{{ job_info.data.INFO.tool_id }}</td>
-                            <!-- <td>{{ job_info.data.INFO.resources }}</td> -->
-                            
-                            {% if loop.first %}
-                                <td rowspan="{{ endpoint_row_counts[(endpoint, available_at)] }}">{{ available_at }}</td>
-                            {% endif %}
+                                        <td
+                                        style="
+                                        text-align: center;
+                                        padding: 10px;
+                                        "
+                                        >
+                                    <div
+                                        style="
+                                        display: inline-block;
+                                        width: 100px;
+                                        height: 100px;
+                                        border-radius: 50%;
+                                        background: conic-gradient(
+                                            #2ecc71 0% {{ cherry[available_at][endpoint]['success'] }}%,
+                                            #e74c3c {{ cherry[available_at][endpoint]['success'] }}% {{ cherry[available_at][endpoint]['success'] + cherry[available_at][endpoint]['failed'] }}%,
+                                            #f39c12 {{ cherry[available_at][endpoint]['success'] + cherry[available_at][endpoint]['failed'] }}% {{ cherry[available_at][endpoint]['success'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['timeout'] }}%
+                                        );"
+                                    >
+                            </div>
+                        </td>
                         </tr>
                     {% endfor %}
                 {% endfor %}
-            {% endfor %}
         </tbody>
     </table>
 </div>
