@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 
 HTML_DEFAULT = Path.home().joinpath(f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')
-
+TABLE_DEFAULT = Path.home().joinpath(f'saber_summary_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')
 
 class Parser():
     def __init__(self, place_holder: str, mock_conf_path: str):
@@ -19,6 +19,9 @@ class Parser():
         self.parser.add_argument('-r', '--html_report', metavar='PATH', type=Path, nargs='?',
                             const= HTML_DEFAULT, help='Enables HTML report, it accepts a path for the output:/path/report.html\
                                                             \nDefaults to \'~/saber_report_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
+        self.parser.add_argument('-t', '--table_html_report', metavar='PATH', type=Path, nargs='?',
+                            const= TABLE_DEFAULT, help='Enables HTML summary report, it accepts a path for the output:/path/report.html\
+                                                            \nDefaults to \'~/saber_summary_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
         self.parser.add_argument('-l', '--log_dir', metavar='LOG DIRECTORY', type=Path,
                                  help='Custom log DIRECTORY. Defaults depends on the platform. \nMacOS: "/Users/<your-user>/Library/Logs/<tool-name>"\
                                     \n Windows: "C:\\Users\\<your-user>\\<tool-name>\\Local\\Acme\\<tool-name>\\Logs" \nLinux: "/home/<your-user>/.local/state/<tool-name>/log"' )
@@ -96,19 +99,20 @@ class Parser():
         
 
 
-    def _output_check(self):
+    def _output_check(self, output_list: list = ['html_report', 'table_html_report']):
         '''
         Check validity of the path given for the HTML output.
         '''
-        if self.editable['html_report'] != None:
-            self._path_resolver(self.editable['html_report'], 'html_report')
-            parent_o = self.editable['html_report'].parent
-            suff = self.editable['html_report'].suffix == '.html'
-            dir = parent_o.is_dir()
-            if suff and dir:
-                pass
-            else:
-                self.parser.error(f"This argument is not a valid path for the HTML output")
+        for key in output_list:
+            if self.editable[key] != None:
+                self._path_resolver(self.editable[key], key)
+                parent_o = self.editable[key].parent
+                suff = self.editable[key].suffix == '.html'
+                dir = parent_o.is_dir()
+                if suff and dir:
+                    pass
+                else:
+                    self.parser.error(f"This argument is not a valid path for the HTML output")
 
 
     def val_safety_check(self):
@@ -162,7 +166,7 @@ class Parser():
             value = value.expanduser() 
             value = value.resolve()
 
-            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report', 'log_dir']:
+            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report', 'table_html_report', 'log_dir']:
                 self.editable[key] = value
                 return None
             else:

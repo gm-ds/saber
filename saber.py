@@ -138,8 +138,14 @@ def main():
             logger.warning("Skipping to the next instance")
 
     if args.html_report:
-        from src.html_output import html_output
-        html_output(args.html_report, results)
+        from src.html_output import HTML
+        report = HTML(args.html_report, results)
+        report.output_page()
+
+    if args.table_html_report:
+        from src.html_output import HTML
+        summary = HTML(args.table_html_report, results)
+        summary.output_summary()
 
     print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
 
