@@ -126,7 +126,7 @@ class SecureConfig:
         '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
-        return self._fernet.encrypt(data)
+        return self._add_newlines(self._fernet.encrypt(data))
 
 
 
@@ -139,7 +139,7 @@ class SecureConfig:
         '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
-        return self._fernet.decrypt(encrypted_data)
+        return self._fernet.decrypt(self._remove_newlines(encrypted_data))
 
 
 
@@ -433,3 +433,21 @@ class SecureConfig:
                     os.unlink(temp_path)
                 except Exception:
                     pass
+
+    def _add_newlines(self, data: bytes) -> bytes:
+        string = data.decode("utf-8")
+
+        # Insert a newline every 80 characters
+        new_string = '\n'.join(string[i:i+80] for i in range(0, len(string), 80))
+        byte_string = new_string.encode("utf-8")
+        
+        return byte_string
+
+    def _remove_newlines(self, data: bytes) -> bytes:
+        string = data.decode("utf-8")
+        # Remove all newline characters
+        stripped_string = string.replace('\n', '')
+
+        stripped_byte_string = stripped_string.encode("utf-8")
+        
+        return stripped_byte_string
