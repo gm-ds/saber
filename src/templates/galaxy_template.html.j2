@@ -183,13 +183,14 @@
 
         .custom-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             margin-bottom: 15px;
         }
 
         .custom-table th, .custom-table td {
             padding: 12px;
-            text-align: left;
+            text-align: center;
             border-bottom: 1px solid #eee;
         }
 
@@ -241,7 +242,7 @@
             {% for compute_id, compute_data in server_data.items() %}
             <div class="compute-section">
                 <div class="compute-header">
-                    <h3>Compute ID: {{ compute_id }}</h3>
+                    <h3>Compute ID: {{ compute_id }}<a name="{{ compute_id }}-{{ server_name }}"></a></h3>
                     <div>
                         <span class="badge">Successful Jobs: {{ compute_data.SUCCESSFUL_JOBS|length }}</span>
                         <span class="badge">Failed Jobs: {{ compute_data.FAILED_JOBS|length }}</span>

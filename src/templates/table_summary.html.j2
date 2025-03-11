@@ -80,13 +80,14 @@
 
         .custom-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             margin-bottom: 15px;
         }
 
         .custom-table th, .custom-table td {
             padding: 12px;
-            text-align: left;
+            text-align: center;
             border-bottom: 1px solid #eee;
         }
 
@@ -133,8 +134,7 @@
                 <th>Pulsar Endpoint</th>
                 <th>Available at</th>
                 <th style="
-                        text-align: center; /* Center the pie chart */
-                        padding: 10px; /* Add some padding */
+                        padding: 10px;
                         "
                         >Status</th>
             </tr>
@@ -145,11 +145,14 @@
             {% for available_at, endpoints_data in compute_data.items() %}
                 {% for endpoint, jobs_data in endpoints_data.items() %}
                         <tr>
+                        {% if standalone%}
                             <td>{{ endpoint }}</td>
+                        {% else %}
+                            <td><a href="#{{ endpoint }}-{{ available_at }}">{{ endpoint }}</a></td>
+                        {% endif %}
                             {% if loop.first %}
                                 <td 
                                 style="
-                                        text-align: center;
                                         padding: 10px;
                                         "
                                 rowspan="{{ instances_counts[available_at] }}"> 
@@ -157,15 +160,14 @@
                             {% endif %}
                                         <td
                                         style="
-                                        text-align: center;
                                         padding: 10px;
                                         "
                                         >
                                     <div
                                         style="
                                         display: inline-block;
-                                        width: 100px;
-                                        height: 100px;
+                                        width: 50px;
+                                        height: 50px;
                                         border-radius: 50%;
                                         background: conic-gradient(
                                             #2ecc71 0% {{ cherry[available_at][endpoint]['success'] }}%,
