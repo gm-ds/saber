@@ -289,22 +289,21 @@ class SecureConfig:
 
         
     
-    def save_config(self, config_data: dict):
+    def _edit_save_config(self, config_data: any):
         '''
         Save encrypted data to configuration file.
 
-        :type config_data: dict
-        :param config_data: Dictionary containing configuration data
+        :type config_data: any
+        :param config_data: Configuration data
         '''
         if not self._fernet:
             raise ValueError("Encryption not initialized. Call initialize_encryption first.")
-            
-        yaml_data = yaml.dump(config_data).encode()
+        
 
-        if yaml_data and not yaml_data.endswith(b"\n"):
-            yaml_data += b"\n"
+        if config_data and not config_data.endswith(b"\n"):
+            config_data += b"\n"
 
-        encrypted_data = self.mngt + self.encrypt_data(yaml_data) + b"\n"
+        encrypted_data = self.mngt + self.encrypt_data(config_data) + b"\n"
         
         self._write_file(encrypted_data)
 
@@ -339,6 +338,40 @@ class SecureConfig:
                 with open(self.config_path, 'rb') as f:
                     data = f.read()
                 return yaml.safe_load(data)
+        
+        except PermissionError as e:
+            raise ValueError(f"Cannot access configuration file: {e}") from e
+
+
+
+    def _edit_load_config(self) -> any:
+        '''
+        Load configuration from YAML file whether is encrypted or not as simple text,
+        for editing.
+
+        :return: Configuration stream
+        :rtype: any
+        ''' 
+        if not self.config_path.exists():
+            raise ValueError(f"File does not exists. Check the following path: {self.config_path}")
+
+        try:
+            if self.is_encrypted():
+                if not self._fernet:
+                    raise ValueError("Encryption not initialized. Call initialize_encryption first.")
+                
+                with open(self.config_path, 'rb') as f:
+                    f.readline()
+                    data = f.read()
+                    if data.endswith(b"\n"):
+                        data = data[:-1]
+                decrypted_data = self.decrypt_data(data)
+                return decrypted_data
+            
+            else:
+                with open(self.config_path, 'rb') as f:
+                    data = f.read()
+                return data
         
         except PermissionError as e:
             raise ValueError(f"Cannot access configuration file: {e}") from e
@@ -397,13 +430,13 @@ class SecureConfig:
         Open the editor with the decrypted file for editing.
         Uses tempfile to store modification before saving it to the configuration YAML file.
         '''
-        current_config = self.load_config()
+        current_config = self._edit_load_config()
         
         temp_path = self.config_path.with_suffix('.editing.yaml')
         
         try:
-            with open(temp_path, 'w') as f:
-                yaml.dump(current_config, f, default_flow_style=False) #N.B.: Flow style on false means no inline yaml
+            with open(temp_path, 'wb') as f:
+                f.write(current_config)
             
             os.chmod(temp_path, stat.S_IRUSR | stat.S_IWUSR)
             
@@ -415,14 +448,15 @@ class SecureConfig:
             mtime_after = temp_path.stat().st_mtime
             
             if mtime_after > mtime_before:
-                with open(temp_path, 'r') as f:
-                    try:
-                        new_config = yaml.safe_load(f)
-                    except yaml.YAMLError as e:
-                        raise ValueError(f"Invalid YAML after editing: {e}")
-                
+                with open(temp_path, 'rb') as f:
+                    new_config = f.read()
+                try:
+                    yaml.safe_load(new_config)
+                except yaml.YAMLError as e:
+                    raise ValueError(f"Invalid YAML after editing: {e}")
+            
                 # Save and encrypt the new config
-                self.save_config(new_config)
+                self._edit_save_config(new_config)
                 print("Configuration updated and encrypted.")
             else:
                 print("No changes made to configuration.")
