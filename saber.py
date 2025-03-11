@@ -11,8 +11,9 @@ def print_example():
 
 
 def main():
-    from src.args import Parser
+    from datetime import timedelta
     from src.logger import CustomLogger
+    from src.args import Parser, datetime
     from src.secure_config import SecureConfig
     from src.bioblend_testjobs import GalaxyTest, json
     from src.globals import TOOL_NAME, PATH_EXIT, TIMEOUT_EXIT, GAL_ERROR, JOB_ERR_EXIT, P, CONFIG_PATH
@@ -70,6 +71,18 @@ def main():
 
     config = safe_config.load_config()
     config["config_path"] = str(safe_config.get_config_path())
+
+    if args.html_report or args.table_html_report:
+        start_dt = datetime.now()
+        start_d = start_dt.strftime("%b %d, %Y %I:%M").lstrip("0") 
+        cron = config.get("cron", {})
+        end_dt = start_dt + timedelta(days=cron.get("d", 0), 
+                                    hours=cron.get("h", 0),
+                                    minutes=cron.get("m", 0),
+                                    seconds=cron.get("s", 0))
+
+        next_d = end_dt.strftime("%b %d, %Y %I:%M").lstrip("0")
+        config["date"] = {"sDATETIME": start_d, "nDATETIME": next_d}
 
     for i in range(len(config['usegalaxy_instances'])):
 

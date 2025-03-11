@@ -130,7 +130,7 @@ class HTML:
         template_context = self._process_data()
 
         # Render
-        rendered_html = table_template.render(**template_context, standalone=standalone)
+        rendered_html = table_template.render(**template_context, standalone=standalone, date=self.config["date"])
 
 
         if standalone:

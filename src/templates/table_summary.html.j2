@@ -105,20 +105,16 @@
             background-color: #eaf2f8;
         }
 
-        .table-status-ok {
-            color: #2ecc71;
-            font-weight: bold;
+        .compute-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f1f1f1;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 3px solid #3498db;
         }
-
-        .table-status-failed {
-            color: #e74c3c;
-            font-weight: bold;
-        }
-
-        .table-status-timeout {
-              color: #f39c12;
-              font-weight: bold;
-          }
     </style>
 </head>
     <body>
@@ -127,6 +123,9 @@
 <div class="table-container">
     <div class="server-header">
         <h2>Summary</h2>
+    </div>
+    <div class="compute-header">
+        <h3>Test run: {{ date.sDATETIME }}{% if date.sDATETIME !=  date.nDATETIME %}<br>Next test: {{ date.nDATETIME }}{% endif %}</h3>
     </div>
     <table class="custom-table">
         <thead>
