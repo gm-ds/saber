@@ -83,7 +83,8 @@ def main():
         useg = dict(config['usegalaxy_instances'][i])
         copyconf = config.copy()
         copyconf.pop("usegalaxy_instances", None)
-        useg.update(useg | copyconf )
+        copyconf.update(useg)
+        useg = copyconf
 
         galaxy_instance = GalaxyTest(
             useg['url'], 
