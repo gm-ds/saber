@@ -74,7 +74,7 @@ def main():
 
     if args.html_report or args.table_html_report:
         start_dt = datetime.now()
-        start_d = start_dt.strftime("%b %d, %Y %I:%M").lstrip("0") 
+        start_d = start_dt.strftime("%b %d, %Y %H:%M")
         string = config.get("date_string", False)
         config["date"] = {"sDATETIME": start_d, "nDATETIME": string}
 
