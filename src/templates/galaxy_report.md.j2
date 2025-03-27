@@ -1,0 +1,141 @@
+# SABER Report
+Servers and Compute IDs
+
+## Summary
+Test run: {{ date.sDATETIME }}{% if date.nDATETIME %}
+{{ date.nDATETIME }}{% endif %}
+
+| Pulsar Endpoint | Galaxy Server | Status |
+|----------------|--------------|--------|
+{% for available_at, endpoints_data in compute_data.items() -%}
+{% for endpoint, jobs_data in endpoints_data.items() -%}
+| [{{ endpoint }}](#{{ endpoint }}-{{ available_at }}) | {% if loop.first %}[{{ available_at }}]({{urls[available_at]}}){% endif %} | **Status Breakdown:**<br>✅ Successful: {{ cherry[available_at][endpoint]['success'] }}%<br>❌ Failed: {{ cherry[available_at][endpoint]['failed'] }}%<br>⏰ Timeout: {{ cherry[available_at][endpoint]['timeout'] }}%<br>[{{ '=' * (cherry[available_at][endpoint]['success'] | round | int // 2 ) }}{{ '=' * (cherry[available_at][endpoint]['failed'] | round | int // 2 ) }}{{ '=' * (cherry[available_at][endpoint]['timeout'] | round | int // 2 ) }}] |
+{% endfor -%}
+{% endfor -%}
+
+
+{% for server_name, server_data in data.items() -%}
+## Server: {{ server_name }}
+
+{% for compute_id, compute_data in server_data.items() -%}
+### Compute ID: {{ compute_id }}
+
+**Job Counts:**
+- **Successful Jobs:** {{ compute_data.SUCCESSFUL_JOBS|length }}
+- **Failed Jobs:** {{ compute_data.FAILED_JOBS|length }}
+- **Timeout Jobs:** {{ compute_data.TIMEOUT_JOBS|length }}
+
+#### Successful Jobs
+{% if compute_data.SUCCESSFUL_JOBS|length == 0 -%}
+*No successful jobs found.*
+{% else -%}
+{% for job_id, job_data in compute_data.SUCCESSFUL_JOBS.items() -%}
+##### Job ID: {{ job_id }} (Status: {{ job_data.INFO.state }})
+
+**Job Details:**
+- **Tool:** {{ job_data.INFO.tool_id }}
+- **Galaxy Version:** {{ job_data.INFO.galaxy_version }}
+- **Created:** {{ job_data.INFO.create_time|replace('T', ' ') }}
+- **Updated:** {{ job_data.INFO.update_time|replace('T', ' ') }}
+
+**Job Information:**
+- **History ID:** {{ job_data.INFO.history_id }}
+- **Exit Code:** {{ job_data.INFO.exit_code }}
+- **Command Line:** `{{ job_data.INFO.command_line }}`
+
+**Job Metrics:**
+| Metric | Value |
+|--------|-------|
+{% for metric in job_data.METRICS -%}
+| {{ metric.title }} | {{ metric.value }} |
+{% endfor -%}
+
+**Inputs & Outputs:**
+| Type | Name | ID | UUID |
+|------|------|----|----|
+{% for input_name, input_data in job_data.INFO.inputs.items() -%}
+| Input | {{ input_name }} | {{ input_data.id }} | {{ input_data.uuid }} |
+{% endfor -%}
+{% for output_name, output_data in job_data.INFO.outputs.items() -%}
+| Output | {{ output_name }} | {{ output_data.id }} | {{ output_data.uuid }} |
+{% endfor -%}
+{% endfor -%}
+{% endif -%}
+
+#### Failed Jobs
+{% if compute_data.FAILED_JOBS|length == 0 -%}
+*No failed jobs found.*
+{% else -%}
+{% for job_id, job_data in compute_data.FAILED_JOBS.items() -%}
+##### Job ID: {{ job_id }} (Status: {{ job_data.INFO.state }})
+
+**Job Details:**
+- **Tool:** {{ job_data.INFO.tool_id }}
+- **Galaxy Version:** {{ job_data.INFO.galaxy_version }}
+- **Created:** {{ job_data.INFO.create_time|replace('T', ' ') }}
+- **Updated:** {{ job_data.INFO.update_time|replace('T', ' ') }}
+
+**Job Information:**
+- **History ID:** {{ job_data.INFO.history_id }}
+- **Exit Code:** {{ job_data.INFO.exit_code }}
+- **Command Line:** `{{ job_data.INFO.command_line }}`
+
+**Job Metrics:**
+| Metric | Value |
+|--------|-------|
+{% for metric in job_data.METRICS -%}
+| {{ metric.title }} | {{ metric.value }} |
+{% endfor -%}
+
+**Inputs & Outputs:**
+| Type | Name | ID | UUID |
+|------|------|----|----|
+{% for input_name, input_data in job_data.INFO.inputs.items() -%}
+| Input | {{ input_name }} | {{ input_data.id }} | {{ input_data.uuid }} |
+{% endfor -%}
+{% for output_name, output_data in job_data.INFO.outputs.items() -%}
+| Output | {{ output_name }} | {{ output_data.id }} | {{ output_data.uuid }} |
+{% endfor -%}
+{% endfor -%}
+{% endif -%}
+
+#### Timeout Jobs
+{% if compute_data.TIMEOUT_JOBS|length == 0 -%}
+*No timeout jobs found.*
+{% else -%}
+{% for job_id, job_data in compute_data.TIMEOUT_JOBS.items() -%}
+##### Job ID: {{ job_id }} (Status: {{ job_data.INFO.state }})
+
+**Job Details:**
+- **Tool:** {{ job_data.INFO.tool_id }}
+- **Galaxy Version:** {{ job_data.INFO.galaxy_version }}
+- **Created:** {{ job_data.INFO.create_time|replace('T', ' ') }}
+- **Updated:** {{ job_data.INFO.update_time|replace('T', ' ') }}
+
+**Job Information:**
+- **History ID:** {{ job_data.INFO.history_id }}
+- **Exit Code:** {{ job_data.INFO.exit_code }}
+- **Command Line:** `{{ job_data.INFO.command_line }}`
+
+**Job Metrics:**
+| Metric | Value |
+|--------|-------|
+{% for metric in job_data.METRICS -%}
+| {{ metric.title }} | {{ metric.value }} |
+{% endfor -%}
+
+**Inputs & Outputs:**
+| Type | Name | ID | UUID |
+|------|------|----|----|
+{% for input_name, input_data in job_data.INFO.inputs.items() -%}
+| Input | {{ input_name }} | {{ input_data.id }} | {{ input_data.uuid }} |
+{% endfor -%}
+{% for output_name, output_data in job_data.INFO.outputs.items() -%}
+| Output | {{ output_name }} | {{ output_data.id }} | {{ output_data.uuid }} |
+{% endfor -%}
+{% endfor -%}
+{% endif -%}
+
+
+{% endfor -%}
+{% endfor -%}

@@ -72,7 +72,7 @@ def main():
     config = safe_config.load_config()
     config["config_path"] = str(safe_config.get_config_path())
 
-    if args.html_report or args.table_html_report:
+    if args.html_report or args.table_html_report or args.md_report:
         start_dt = datetime.now()
         start_d = start_dt.strftime("%b %d, %Y %H:%M")
         string = config.get("date_string", False)
@@ -146,13 +146,19 @@ def main():
             logger.warning("Skipping to the next instance")
 
     if args.html_report:
-        from src.html_output import HTML
-        report = HTML(args.html_report, results, config)
+        from src.html_output import Report
+        report = Report(args.html_report, results, config)
         report.output_page()
 
+    if args.md_report:
+        from src.html_output import Report
+        report = Report(args.md_report, results, config)
+        report.output_md()
+
+
     if args.table_html_report:
-        from src.html_output import HTML
-        summary = HTML(args.table_html_report, results, config)
+        from src.html_output import Report
+        summary = Report(args.table_html_report, results, config)
         summary.output_summary(True)
 
     print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress

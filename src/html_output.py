@@ -3,22 +3,22 @@
 from src.logger import os
 from src. secure_config import tempfile, Path
 
-class HTML:
+class Report:
     def __init__(self, path: Path, dict_results: dict, configuration: dict):
         self.path = path
         self.saber_results = dict_results
         self.config = configuration
 
-    def _write_file(self, html):
+    def _write_file(self, content):
         try:
             with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_file:
-                tmp_file.write(html)
+                tmp_file.write(content)
                 tmp_file.flush()  # Ensure data is written
                 os.fsync(tmp_file.fileno())  # Force write to disk
                 tmp_path = Path(tmp_file.name)
             
             os.replace(tmp_path, self.path) # Either succed or fails to replace file 
-            print(f"HTML generated successfully as {self.path}")
+            print(f"Report generated successfully as {self.path}")
 
         except OSError:
             # Fallback: Use same-directory temporary file
@@ -26,12 +26,12 @@ class HTML:
             try:
                 # Write encrypted data to temporary file
                 with open(temp_path, 'w') as f:
-                    f.write(html)
+                    f.write(content)
                     f.flush()
                     os.fsync(f.fileno())
                 
                 os.rename(temp_path, self.path)  # Still atomic like replace
-                print(f"HTML generated successfully as {self.path}")
+                print(f"Report generated successfully as {self.path}")
             except Exception as e:
                 # Clean up
                 if temp_path.exists():
@@ -137,3 +137,20 @@ class HTML:
             self._write_file(rendered_html)
         else:
             return rendered_html
+        
+    def output_md(self) -> None:
+        from jinja2 import Template
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(script_dir, 'templates', 'galaxy_report.md.j2')
+
+        with open(template_path, 'r') as f:
+            template_str = f.read()
+
+        template = Template(template_str)
+        template_context = self._process_data()
+
+        # Render 
+        page_rendered_md = template.render(**template_context, data=self.saber_results,  date=self.config["date"])
+
+        self._write_file(page_rendered_md)

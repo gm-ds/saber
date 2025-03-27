@@ -7,6 +7,7 @@ from datetime import datetime
 
 HTML_DEFAULT = Path.home().joinpath(f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')
 TABLE_DEFAULT = Path.home().joinpath(f'saber_summary_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')
+MD_DEFAULT = Path.home().joinpath(f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.md')
 
 class Parser():
     def __init__(self, place_holder: str, mock_conf_path: str):
@@ -19,6 +20,9 @@ class Parser():
         self.parser.add_argument('-r', '--html_report', metavar='PATH', type=Path, nargs='?',
                             const= HTML_DEFAULT, help='Enables HTML report, it accepts a path for the output:/path/report.html\
                                                             \nDefaults to \'~/saber_report_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
+        self.parser.add_argument('-m', '--md_report', metavar='PATH', type=Path, nargs='?',
+                            const= MD_DEFAULT, help='Enables Markdown report, it accepts a path for the output:/path/report.md\
+                                                            \nDefaults to \'~/saber_report_YYYY-MM-DD_HH-MM-SS.md\' otherwise.')
         self.parser.add_argument('-t', '--table_html_report', metavar='PATH', type=Path, nargs='?',
                             const= TABLE_DEFAULT, help='Enables HTML summary report, it accepts a path for the output:/path/report.html\
                                                             \nDefaults to \'~/saber_summary_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
@@ -99,20 +103,20 @@ class Parser():
         
 
 
-    def _output_check(self, output_list: list = ['html_report', 'table_html_report']):
+    def _output_check(self, output_list: list = ['html_report', 'table_html_report', 'md_report']):
         '''
-        Check validity of the path given for the HTML output.
+        Check validity of the path given for the HTML or MD output.
         '''
         for key in output_list:
             if self.editable[key] != None:
                 self._path_resolver(self.editable[key], key)
                 parent_o = self.editable[key].parent
-                suff = self.editable[key].suffix == '.html'
+                suff = self.editable[key].suffix in ['.html', '.md']
                 dir = parent_o.is_dir()
                 if suff and dir:
                     pass
                 else:
-                    self.parser.error(f"This argument is not a valid path for the HTML output")
+                    self.parser.error(f"This argument is not a valid path for the HTML or MD output")
 
 
     def val_safety_check(self):
@@ -166,7 +170,7 @@ class Parser():
             value = value.expanduser() 
             value = value.resolve()
 
-            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report', 'table_html_report', 'log_dir']:
+            if key in ['edit', 'encrypt', 'decrypt', 'settings', 'html_report', 'table_html_report', 'md_report', 'log_dir']:
                 self.editable[key] = value
                 return None
             else:
