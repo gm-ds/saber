@@ -13,6 +13,9 @@
 - `-r`, `--html_report`
     Generates an HTML report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.html
 
+- `-m`, `--md_report`
+    Generates a Markdown report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.md
+
 - `-t`, `--table_html_report`
     Generates an HTML summarized report in form of a table. Accepts a custom file path. Default: ~/saber_summary_YYYY-MM-DD_HH-MM-SS.html
     Implementation in progress
@@ -59,6 +62,7 @@ The Galaxy server being currently tested is displayed in brackets along with the
 
 ## TODO
 - Improve errors handling
+- Clean jinja2 templates
 - ~~Comments and Docs~~
 - ~~Switch to yaml config file to not rely on input.json~~
 - ~~Improve logging~~
