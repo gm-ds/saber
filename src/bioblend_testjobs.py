@@ -38,6 +38,8 @@ class GalaxyTest():
         self.gi = GalaxyInstance(url, email, gpassword) if ((email is not None) and (gpassword is not None)) else GalaxyInstance(url, key)
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
+        self.p_endpoint = ""
+        self.err_hist = {}
 
        # Default configuration
         default_config = {
@@ -45,7 +47,7 @@ class GalaxyTest():
             "maxwait": 12000,
             "interval": 5,
             "timeout": 12000,
-            "history_name": "Pulsar Endpoints Test"
+            "history_name": "SABER"
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
@@ -144,10 +146,11 @@ class GalaxyTest():
             history_name = self.config.get('history_name', "Pulsar Endpoints Test")
 
         # Delete older histories to ensure there's enough free space
-        self.purge_histories(False)
+        self.purge_histories()
 
+        self.logger.info(f'Creating History...')
         self.history = self.history_client.create_history(name=history_name)
-        self.logger.info(f'Creating History, ID: {self.history["id"]}')
+        self.logger.info(f'         History ID: {self.history["id"]}')
 
 
 
@@ -162,29 +165,55 @@ class GalaxyTest():
         :type purge_old: bool
         :param purge_old: Defaults True - purges ALL histories older than one week.
         '''
-        if self.history is not None:
+        if self.history_client is not None:
             for history in self.history_client.get_histories():
                 if history['name'] == self.config.get('history_name') and purge_new:
                     self.history_client.delete_history(history['id'], purge=True)
                     self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
-                if (datetime.today() - datetime.strptime(history['update_time'],
-                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(weeks=1) and purge_old: 
-                    self.history_client.delete_history(history['id'], purge=True)
-                    self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+                create_time = self.history_client.show_history(history_id=history['id'], keys=['create_time'])
+                if (datetime.today() - datetime.strptime(create_time['create_time'],
+                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(hours=36) and purge_old:
+                    config_clean = self.config.get('history_name').lower()
+                    history_clean = history.get('name').strip().lower()
+                    check = False
+                    if config_clean in history_clean:
+                        check = True
+                    history_words = history_clean.split()
+                    for word in history_words:
+                        if config_clean == word:
+                            check = True
+                            break                           
+                    if check: 
+                        self.history_client.delete_history(history['id'], purge=True)
+                        self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
 
 
 
     # Rename History to keep it if an error occurs
-    def _update_history_name(self, msg: str = 'ERROR') -> None:
+    def _update_history_name(self, job_id, msg: str = 'ERR') -> None:
         '''
-        Changes the name of a history. Used when a job fails or timeouts.
+        Make a new a history to store failed jobs.
 
         :type msg: str, optional
-        :param msg: Small message that is added to the history name to provide some information. Defaults to ERROR
+        :param msg: Small message that is added to the history name to provide some information. Defaults to ERR
         '''
-        message = f"{msg}-{self.config.get('history_name')}"
-        self.history_client.update_history(self.history['id'], name=message)
-        self.logger.info(f"History name updated to: {message}")
+        current_date = datetime.now().strftime('%-d/%-m/%y')
+        message = f"{msg} {self.p_endpoint} {current_date} {self.config.get('history_name')}"
+        if msg not in self.err_hist:
+            self.err_hist[msg] = {}
+    
+        if self.p_endpoint not in self.err_hist[msg]:
+            self.err_hist[msg][self.p_endpoint] = self.history_client.create_history(name=message)
+    
+        show = self.history_client.show_history(self.history['id'], contents=False)
+        datasets_id = show['state_ids']
+        datasets_id.pop('ok', None)
+        for state, id_list in datasets_id.items():
+            for id in id_list:
+                dataset = self.gi.datasets.show_dataset(id)
+                if dataset['creating_job'] == job_id:
+                    self.history_client.copy_content(self.err_hist[msg][self.p_endpoint]['id'], id)
+        self.logger.info(f"Unsuccessful jobs copied to: {message}")
             
         
 
@@ -222,8 +251,8 @@ class GalaxyTest():
 
 
         if wf_path.exists():
-            self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
             self.logger.info(f'Uploading Workflow, local path: {wf_path}')
+            self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
         else:
             self.logger.error(f"Workflow path does not exist: {wf_path}")
             raise SystemExit(PATH_EXIT)
@@ -322,7 +351,8 @@ class GalaxyTest():
                                               "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                               "METRICS": self.gi.jobs.get_metrics(job['id'])
                                               }
-                self._update_history_name('TIMEOUT')
+                self._update_history_name(job_id=job["id"], msg='TTO')
+                self.gi.jobs.cancel_job(job['id'])
                 
             # Handle completion
             elif job and job['exit_code'] == 0:
@@ -342,8 +372,8 @@ class GalaxyTest():
                 failed_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
                                   "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                   "METRICS": self.gi.jobs.get_metrics(job['id'])}
-                self._update_history_name()
-                #self.gi.jobs.cancel_job(job['id'])
+                self._update_history_name(job_id=job["id"])
+                self.gi.jobs.cancel_job(job['id'])
         return_values = {"SUCCESSFUL_JOBS": successful_jobs, 
                                      "TIMEOUT_JOBS": timeout_jobs, 
                                      "FAILED_JOBS": failed_jobs}
@@ -396,6 +426,7 @@ class GalaxyTest():
         prefs = self.gi.users.get_current_user().get('preferences', {}).get('extra_user_preferences', {})
         new_prefs = json.loads(prefs).copy() # TODO: find a workaround to not use the json library only for this bit
         new_prefs.update({'distributed_compute|remote_resources' : p_endpoint})
+        self.p_endpoint = p_endpoint
 
         if prefs != new_prefs:
             self.logger.info('Updating pulsar endpoint in user preferences')
