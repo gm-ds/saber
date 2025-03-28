@@ -7,6 +7,7 @@ from pathlib import Path
 from src.globals import API_EXIT, PATH_EXIT, TOOL_NAME
 from datetime import datetime, timedelta
 from src.logger import CustomLogger
+from bioblend import ConnectionError
 from bioblend.galaxy import datasets
 from bioblend.galaxy import GalaxyInstance
 from bioblend.galaxy.histories import HistoryClient
@@ -154,6 +155,15 @@ class GalaxyTest():
 
 
 
+    def _safe_delete_history(self, id, purge_bool) -> None:
+        try:
+            self.history_client.delete_history(history_id=id, purge=purge_bool)
+        except ConnectionError as e:
+            if "403003" in str(e):
+                self.logger.warning(f"Skipping immutable history: {id}")
+                return
+            raise 
+
 
     def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
         '''
@@ -168,8 +178,8 @@ class GalaxyTest():
         if self.history_client is not None:
             for history in self.history_client.get_histories():
                 if history['name'] == self.config.get('history_name') and purge_new:
-                    self.history_client.delete_history(history['id'], purge=True)
                     self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+                    self._safe_delete_history(history['id'], purge_bool=True)
                 create_time = self.history_client.show_history(history_id=history['id'], keys=['create_time'])
                 if (datetime.today() - datetime.strptime(create_time['create_time'],
                                                         "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(hours=36) and purge_old:
@@ -184,8 +194,9 @@ class GalaxyTest():
                             check = True
                             break                           
                     if check: 
-                        self.history_client.delete_history(history['id'], purge=True)
                         self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+                        self._safe_delete_history(history['id'], purge_bool=True)
+
 
 
 
