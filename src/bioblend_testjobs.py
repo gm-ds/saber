@@ -182,7 +182,7 @@ class GalaxyTest():
                     self._safe_delete_history(history['id'], purge_bool=True)
                 create_time = self.history_client.show_history(history_id=history['id'], keys=['create_time'])
                 if (datetime.today() - datetime.strptime(create_time['create_time'],
-                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(hours=36) and purge_old:
+                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(hours=20) and purge_old:
                     config_clean = self.config.get('history_name').lower()
                     history_clean = history.get('name').strip().lower()
                     check = False
