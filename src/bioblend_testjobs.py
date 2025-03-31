@@ -363,7 +363,7 @@ class GalaxyTest():
                                               "METRICS": self.gi.jobs.get_metrics(job['id'])
                                               }
                 self._update_history_name(job_id=job["id"], msg='TTO')
-                self.gi.jobs.cancel_job(job['id'])
+                #self.gi.jobs.cancel_job(job['id'])
                 
             # Handle completion
             elif job and job['exit_code'] == 0:
@@ -384,7 +384,7 @@ class GalaxyTest():
                                   "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                   "METRICS": self.gi.jobs.get_metrics(job['id'])}
                 self._update_history_name(job_id=job["id"])
-                self.gi.jobs.cancel_job(job['id'])
+                #self.gi.jobs.cancel_job(job['id'])
         return_values = {"SUCCESSFUL_JOBS": successful_jobs, 
                                      "TIMEOUT_JOBS": timeout_jobs, 
                                      "FAILED_JOBS": failed_jobs}
