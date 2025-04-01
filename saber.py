@@ -32,14 +32,6 @@ def main():
             sys.exit(0)
 
             
-        # Initialize secure configuration
-        if args.settings is None:
-            safe_config = SecureConfig(TOOL_NAME)
-            safe_config.initialize_encryption(args.password)
-        else:
-            safe_config = SecureConfig(TOOL_NAME, args.settings)
-            safe_config.initialize_encryption(args.password)
-        
         # Manage -cryption and edit flags and ops
         # TODO: tests!!!!!
         if args.encrypt:
@@ -62,6 +54,16 @@ def main():
             safe_config.edit_config()
             sys.exit(0)
             
+
+
+        # Initialize secure configuration
+        if args.settings is None:
+            safe_config = SecureConfig(TOOL_NAME)
+            safe_config.initialize_encryption(args.password)
+        else:
+            safe_config = SecureConfig(TOOL_NAME, args.settings)
+            safe_config.initialize_encryption(args.password)
+
 
             
     except (ValueError, PermissionError) as e:
