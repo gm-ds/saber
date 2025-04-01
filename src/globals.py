@@ -57,7 +57,7 @@ usegalaxy_instances:
     # password: "password"
     
     default_compute_id: "None"  # Default non-remote compute
-    maxwait: 12000  # Upload timeout in milliseconds
+    maxwait: 12000  # Upload timeout in seconds
     interval: 5  # Time (seconds) between uploads state checks
     sleep_time: 5 # Time between jobs states checks
 
