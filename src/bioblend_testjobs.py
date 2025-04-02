@@ -315,23 +315,22 @@ class GalaxyTest():
             if not jobs:
                 return False
             
+            all_jobs_completed = True
             for i in range(len(jobs)):
                 current_job = jobs[i]
                 job_state = current_job['state']
-                job_exit_code = current_job.get('exit_code')
+                #job_exit_code = current_job.get('exit_code')
                 tool_id = self._tool_id_split(current_job.get("tool_id"))
                 self.logger.info(f'    {job_state}    Tool ID: {tool_id}')
 
-                if job_state == "error":
-                    self.logger.info(f'The job encountered an error.')
-                    if i == len(jobs)-1:
-                        return True
-                    
                 # Continue monitoring
-                if job_state == "ok" and job_exit_code is not None:
-                    if i == len(jobs)-1:
-                        return True        
-            return False
+                if job_state not in ["ok", "error"]:
+                    all_jobs_completed = False
+
+                #if job_state == "error":
+                 #   self.logger.info(f'The job encountered an error.')
+                         
+            return all_jobs_completed
         
         self._wait_for_state(job_completed, timeout, sleep_time, f"Timeout {timeout}s expired.")
 
