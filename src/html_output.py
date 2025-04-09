@@ -64,10 +64,13 @@ class Report:
 
                 pies[available_at][endpoint]['tot'] = (len(jobs_data.get("TIMEOUT_JOBS", {})) + 
                                                        len(jobs_data.get("FAILED_JOBS", {})) + len(jobs_data.get("SUCCESSFUL_JOBS", {})))
-                pies[available_at][endpoint]['success'] = (len(jobs_data.get("SUCCESSFUL_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
-                pies[available_at][endpoint]['failed'] = (len(jobs_data.get("FAILED_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
-                pies[available_at][endpoint]['timeout'] = (len(jobs_data.get("TIMEOUT_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
-            
+                if pies[available_at][endpoint]['tot'] > 0:
+                    pies[available_at][endpoint]['bb_errors'] = False
+                    pies[available_at][endpoint]['success'] = (len(jobs_data.get("SUCCESSFUL_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+                    pies[available_at][endpoint]['failed'] = (len(jobs_data.get("FAILED_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+                    pies[available_at][endpoint]['timeout'] = (len(jobs_data.get("TIMEOUT_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+                else:
+                    pies[available_at][endpoint]['bb_errors'] = True
 
                 for job_type in job_types:
                     jobs = None
