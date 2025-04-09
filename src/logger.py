@@ -95,16 +95,23 @@ class CustomLogger():
 
         self._setup_syslog()
 
-        # TODO: Fix this
-        # Attach BioBlend logger to use the same handlers
+        # Attach BioBlend logger to use the same handlers and filter
         bioblend_logger = logging.getLogger("bioblend")
         bioblend_logger.setLevel(self._logger.level)
+
+        # Copy handlers
         for handler in self._logger.handlers:
             if not isinstance(handler, logging.handlers.SysLogHandler):
                 handler.setFormatter(formatter)
                 if handler not in bioblend_logger.handlers:
                     bioblend_logger.addHandler(handler)
 
+        # Apply context filter to bioblend
+        for filter in self._logger.filters:
+            if filter not in bioblend_logger.filters:
+                bioblend_logger.addFilter(filter)
+
+        # Prevent duplicate logs
         bioblend_logger.propagate = False
 
 
