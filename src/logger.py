@@ -24,6 +24,16 @@ class ContextFilter(logging.Filter):
         record.pulsar = self.context.get('Endpoint', 'Default')
         return True
 
+class SafeFormatter(logging.Formatter):
+    """A formatter that doesn't fail when log records are missing expected attributes"""
+    
+    def format(self, record):
+        if not hasattr(record, 'galaxy'):
+            record.galaxy = 'unknown'
+        if not hasattr(record, 'pulsar'):
+            record.pulsar = 'unknown'
+            
+        return super().format(record)
 
 class CustomLogger():
     '''
@@ -78,7 +88,7 @@ class CustomLogger():
 
         #Setting up handler for rotating logs and custom format
         handler = logging.handlers.TimedRotatingFileHandler(log_file, when="midnight", backupCount=7)
-        formatter = logging.Formatter('%(asctime)s %(name)s: %(levelname)-8s [%(galaxy)s@%(pulsar)s] %(message)s','%Y-%m-%d %H:%M:%S')
+        formatter = SafeFormatter('%(asctime)s %(name)s: %(levelname)-8s [%(galaxy)s@%(pulsar)s] %(message)s','%Y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
 
         # Set logger instancelog_context
