@@ -30,16 +30,12 @@ P = "place_holder"
 CONFIG_PATH = mock_get_default_config_path()
 
 # Exit Codes
-
-PATH_EXIT = 1
-
-API_EXIT = 3
-
-TIMEOUT_EXIT = 42
-
-GAL_ERROR = 10
-
-JOB_ERR_EXIT = TIMEOUT_EXIT
+ERR_CODES = {"path": 1,
+               "api": 3,
+               "args":2,
+               "tto": 42,
+               "gal": 10,
+               "job": 42}
 
 # Example Config
 
