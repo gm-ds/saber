@@ -4,7 +4,7 @@
 import time
 import json
 from pathlib import Path
-from src.globals import API_EXIT, PATH_EXIT, TOOL_NAME
+from src.globals import TOOL_NAME
 from datetime import datetime, timedelta
 from src.logger import CustomLogger
 from bioblend import ConnectionError
@@ -237,8 +237,8 @@ class GalaxyTest():
         '''
         wf_path = self.config.get('ga_path', None) if wf_path is None else wf_path
         if wf_path is None:
-            self.logger.error("No workflow path provided in config or arguments.")
-            raise SystemExit(PATH_EXIT)
+            error_msg = "No workflow path provided in config file."
+            raise WFPathError(error_msg)
 
         wf_path = Path(wf_path).expanduser()
 
@@ -265,8 +265,8 @@ class GalaxyTest():
             self.logger.info(f'Uploading Workflow, local path: {wf_path}')
             self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
         else:
-            self.logger.error(f"Workflow path does not exist: {wf_path}")
-            raise SystemExit(PATH_EXIT)
+            error_msg = f"Workflow path does not exist: {wf_path}"
+            raise WFPathError(error_msg)
 
 
 
@@ -443,7 +443,7 @@ class GalaxyTest():
             self.gi.users.update_user(user_id=user_id, user_data = new_prefs)
             if p_endpoint == "None":
                 p_endpoint = "Default"
-            self.logger.update_log_context( name, p_endpoint)
+            self.logger.update_log_context(name, p_endpoint)
             self.logger.info(f"Switching to pulsar endpoint {p_endpoint} "
                         f"from {name} instance")
 
@@ -473,3 +473,17 @@ class GalaxyTest():
             if check_function():
                 return True
             time.sleep(interval)
+    
+
+    def clean_up(self):
+        """Clean up function"""
+        self.purge_histories()
+        self.purge_workflow()
+        self.logger.info("Clean-up terminated")
+
+
+
+class WFPathError(Exception):
+    """Custom exception for workflow path error cases."""
+    pass
+
