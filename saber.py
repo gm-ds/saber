@@ -66,40 +66,39 @@ def main():
             safe_config = SecureConfig(TOOL_NAME, args.settings)
             safe_config.initialize_encryption(args.password)
 
-
             
     except (ValueError, PermissionError) as e:
         logger.error(f"An error occurred with configuration: {e}")
         sys.exit(ERR_CODES['path'])
 
+    try:
+        config = safe_config.load_config()
+        config["config_path"] = str(safe_config.get_config_path())
 
-    config = safe_config.load_config()
-    config["config_path"] = str(safe_config.get_config_path())
+        if args.html_report or args.table_html_report or args.md_report:
+            start_dt = datetime.now()
+            start_d = start_dt.strftime("%b %d, %Y %H:%M")
+            string = config.get("date_string", False)
+            config["date"] = {"sDATETIME": start_d, "nDATETIME": string}
 
-    if args.html_report or args.table_html_report or args.md_report:
-        start_dt = datetime.now()
-        start_d = start_dt.strftime("%b %d, %Y %H:%M")
-        string = config.get("date_string", False)
-        config["date"] = {"sDATETIME": start_d, "nDATETIME": string}
+    
+        for i in range(len(config['usegalaxy_instances'])):
 
-    for i in range(len(config['usegalaxy_instances'])):
+            useg = dict(config['usegalaxy_instances'][i])
+            copyconf = config.copy()
+            copyconf.pop("usegalaxy_instances", None)
+            copyconf.update(useg)
+            useg = copyconf
 
-        useg = dict(config['usegalaxy_instances'][i])
-        copyconf = config.copy()
-        copyconf.pop("usegalaxy_instances", None)
-        copyconf.update(useg)
-        useg = copyconf
+            galaxy_instance = GalaxyTest(
+                useg['url'], 
+                useg['api'], 
+                useg.get('email', None), 
+                useg.get('password', None), 
+                useg, 
+                logger
+                )
 
-        galaxy_instance = GalaxyTest(
-            useg['url'], 
-            useg['api'], 
-            useg.get('email', None), 
-            useg.get('password', None), 
-            useg, 
-            logger
-            )
-
-        try:
             try:
                 input = galaxy_instance.test_job_set_up()
 
@@ -114,6 +113,7 @@ def main():
                 galaxy_instance.clean_up()
                 if not i == len(config['usegalaxy_instances'])-1:
                     logger.warning("Skipping to the next instance")
+                continue
             except ConnectionError as e:
                 conn_rr = True
                 logger.warning(f"Connection Error while testing {useg['name']}:")
@@ -121,6 +121,7 @@ def main():
                 galaxy_instance.clean_up()
                 if not i == len(config['usegalaxy_instances'])-1:
                     logger.warning("Skipping to the next instance")
+                continue
 
             try:
                 for pe in useg['endpoints']:
@@ -153,59 +154,61 @@ def main():
                 logger.warning(f"An error occurred while testing {pe}:")
                 logger.warning(f"{e}")
                 logger.warning("Continuing...")
+                continue
 
             except ConnectionError as e:
                 logger.warning(f"A Connection error occurred while testing {pe}:")
                 logger.warning(f"{e}")
                 logger.warning("Continuing...")
+                continue
 
-            try:
-                if args.html_report:
-                    from src.html_output import Report
-                    report = Report(args.html_report, results, config, class_logger=logger)
-                    report.output_page()
+        try:
+            if args.html_report:
+                from src.html_output import Report
+                report = Report(args.html_report, results, config, class_logger=logger)
+                report.output_page()
 
-                if args.md_report:
-                    from src.html_output import Report
-                    report = Report(args.md_report, results, config, class_logger=logger)
-                    report.output_md()
+            if args.md_report:
+                from src.html_output import Report
+                report = Report(args.md_report, results, config, class_logger=logger)
+                report.output_md()
 
 
-                if args.table_html_report:
-                    from src.html_output import Report
-                    summary = Report(args.table_html_report, results, config, class_logger=logger)
-                    summary.output_summary(True)
+            if args.table_html_report:
+                from src.html_output import Report
+                summary = Report(args.table_html_report, results, config, class_logger=logger)
+                summary.output_summary(True)
 
-            except Exception:
-                logger.warning("The reports might not have been generated.")
+        except Exception:
+            logger.warning("The reports might not have been generated.")
 
-            print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
+        print(json.dumps(results, indent=2, sort_keys=False)) #Work In Progress
 
-            logger.info("Test completed")
+        logger.info("Test completed")
 
-            for g_name, g_data in results.items():
-                for com_id, job_data in g_data.items():
-                    if job_data.get("TIMEOUT_JOBS"):
-                        logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
-                        logger.warning(f"Exiting with code: {ERR_CODES['tto']}")
-                        if not conn_rr or not exc:
-                            sys.exit(ERR_CODES['tto'])
-                    if job_data.get("FAILED_JOBS"):
-                        logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
-                        logger.warning(f"Exiting with code: {ERR_CODES['job']}")
-                        if not conn_rr or not exc:
-                            sys.exit(ERR_CODES['job'])
-            if conn_rr:
-                sys.exit(ERR_CODES['api'])
-            if exc:
-                sys.exit(ERR_CODES['gal'])     
-            sys.exit(0)
+        for g_name, g_data in results.items():
+            for com_id, job_data in g_data.items():
+                if job_data.get("TIMEOUT_JOBS"):
+                    logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
+                    logger.warning(f"Exiting with code: {ERR_CODES['tto']}")
+                    if not conn_rr or not exc:
+                        sys.exit(ERR_CODES['tto'])
+                if job_data.get("FAILED_JOBS"):
+                    logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
+                    logger.warning(f"Exiting with code: {ERR_CODES['job']}")
+                    if not conn_rr or not exc:
+                        sys.exit(ERR_CODES['job'])
+        if conn_rr:
+            sys.exit(ERR_CODES['api'])
+        if exc:
+            sys.exit(ERR_CODES['gal'])     
+        sys.exit(0)
 
-        except KeyboardInterrupt:
-            logger.warning("Test interrupted")
-            galaxy_instance.clean_up()
-            print("\n")
-            sys.exit(0)
+    except KeyboardInterrupt:
+        logger.warning("Test interrupted")
+        galaxy_instance.clean_up()
+        print("\n")
+        sys.exit(0)
 
 if __name__ == '__main__':
     main()
