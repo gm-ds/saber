@@ -48,7 +48,8 @@ class GalaxyTest():
             "maxwait": 12000,
             "interval": 5,
             "timeout": 12000,
-            "history_name": "SABER"
+            "history_name": "SABER",
+            "keep_history": False
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
@@ -477,7 +478,8 @@ class GalaxyTest():
 
     def clean_up(self):
         """Clean up function"""
-        self.purge_histories()
+        if not self.config.get('keep_history', False):
+            self.purge_histories()
         self.purge_workflow()
         self.logger.info("Clean-up terminated")
 
