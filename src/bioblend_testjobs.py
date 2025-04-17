@@ -490,6 +490,7 @@ class GalaxyTest():
         for output in job_outputs:
             dataset_id = output['dataset']['id']
             self.gi.histories.update_dataset(self.history['id'], dataset_id, tags=[self.p_endpoint, msg])
+        self.logger.info("Added tags to job outputs")
 
 
 
