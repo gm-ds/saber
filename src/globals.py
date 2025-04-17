@@ -65,5 +65,6 @@ data_inputs:
     file_type: "change_me"  # Correct file type
 
 timeout: 1200  # General timeout value, seconds
+clean_history: onsuccess # Default. Other values: "never", "always"
 
 """
