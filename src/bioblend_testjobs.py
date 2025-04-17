@@ -13,6 +13,7 @@ from bioblend.galaxy import GalaxyInstance
 from bioblend.galaxy.histories import HistoryClient
 
 
+
 class GalaxyTest():
     '''
     Creates a GalaxyInstance using bioblend, and logs operations with a custom logger.
@@ -40,7 +41,8 @@ class GalaxyTest():
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
         self.p_endpoint = ""
-        self.err_hist = {}
+        # self.err_hist = {} needed by _update_history_name
+        self.err_tracker = False
 
        # Default configuration
         default_config = {
@@ -49,7 +51,7 @@ class GalaxyTest():
             "interval": 5,
             "timeout": 12000,
             "history_name": "SABER",
-            "keep_history": True
+            "clean_history": "onsuccess"
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
@@ -132,9 +134,7 @@ class GalaxyTest():
                 return False
             return True
         return self._wait_for_state(check_dataset_ready, maxtime, interval, "Upload time exceeded")
-                    
- 
-
+                     
 
 
     def _create_history(self, history_name: str = None) -> None:
@@ -146,7 +146,8 @@ class GalaxyTest():
         '''
         if history_name is None:
             history_name = self.config.get('history_name', "Pulsar Endpoints Test")
-
+        current_date = datetime.now().strftime('%-d/%-m/%y')
+        history_name = f"{history_name} {current_date}"
         # Delete older histories to ensure there's enough free space
         self.purge_histories()
 
@@ -164,6 +165,7 @@ class GalaxyTest():
                 self.logger.warning(f"Skipping immutable history: {id}")
                 return
             raise 
+
 
 
     def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
@@ -200,15 +202,14 @@ class GalaxyTest():
 
 
 
-
-    # Rename History to keep it if an error occurs
+    '''
     def _update_history_name(self, job_id, msg: str = 'ERR') -> None:
-        '''
+    
         Make a new a history to store failed jobs.
 
         :type msg: str, optional
         :param msg: Small message that is added to the history name to provide some information. Defaults to ERR
-        '''
+        
         current_date = datetime.now().strftime('%-d/%-m/%y')
         message = f"{msg} {self.p_endpoint} {current_date} {self.config.get('history_name')}"
         if msg not in self.err_hist:
@@ -226,8 +227,9 @@ class GalaxyTest():
                 if dataset['creating_job'] == job_id:
                     self.history_client.copy_content(self.err_hist[msg][self.p_endpoint]['id'], id)
         self.logger.info(f"Unsuccessful jobs copied to: {message}")
-            
+    '''        
         
+
 
     def _upload_workflow(self, wf_path: str = None) -> None:
         '''
@@ -271,7 +273,6 @@ class GalaxyTest():
 
 
 
-
     def purge_workflow(self) -> None:
         '''
         Delete permanently the workflow uploaded for the test
@@ -291,6 +292,7 @@ class GalaxyTest():
             return tool_id.split("/devteam/")[1]
         else:
             return tool_id
+
 
 
     def _monitor_job_status(self, invocation_id: str, 
@@ -353,17 +355,15 @@ class GalaxyTest():
         failed_jobs = {}
         for job in jobs:
 
-            # Cancel job if it's still running
             if job and job['state'] in ['new', 'queued', 'running']:
-                #self.logger.info('Canceling test job, timeout.')
                 self.logger.info(f'Job {job["id"]} failed due to timeout:')
                 self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
                 timeout_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
                                               "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                               "METRICS": self.gi.jobs.get_metrics(job['id'])
                                               }
-                self._add_tag(job["id"], "saber_tto")
-                #self._update_history_name(job_id=job["id"], msg='TTO')
+                self._add_tag(job["id"], msg_list="saber_tto")
+                self.err_tracker = True
 
                 
             # Handle completion
@@ -373,7 +373,7 @@ class GalaxyTest():
                 successful_jobs[job['id']] = {"INFO": self.gi.jobs.show_job(job['id']),
                                               "METRICS": self.gi.jobs.get_metrics(job['id'])
                                               }
-                self.gi.jobs.cancel_job(job['id'])
+                self._add_tag(job["id"])
 
             else:
                 
@@ -384,7 +384,8 @@ class GalaxyTest():
                 failed_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
                                   "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                   "METRICS": self.gi.jobs.get_metrics(job['id'])}
-                self._add_tag(job["id"], "err")
+                self._add_tag(job["id"], msg_list="err")
+                self.err_tracker = True
 
         return_values = {"SUCCESSFUL_JOBS": successful_jobs, 
                                      "TIMEOUT_JOBS": timeout_jobs, 
@@ -477,20 +478,30 @@ class GalaxyTest():
             time.sleep(interval)
     
 
+
     def clean_up(self):
         """Clean up function"""
-        if not self.config.get('keep_history', False):
+        clean_his = self.config.get('clean_history', "onsuccess")
+        if not clean_his in ["never", "always", "onsuccess"]:
+            clean_his = "onsuccess"
+        bool_logic = (clean_his == "always") or (clean_his == "onsuccess" and not self.err_tracker)
+        if bool_logic:
             self.purge_histories()
         self.purge_workflow()
         self.logger.info("Clean-up terminated")
 
-    def _add_tag(self, job_id, msg):
+
+
+    def _add_tag(self, job_id: str, msg_list: list = None):
         """Add tag to job"""
         job_outputs = self.gi.jobs.get_outputs(job_id)
+        tag_list = [self.p_endpoint]
+        if msg_list and len(msg_list) > 0:
+            tag_list.append(msg_list)
         for output in job_outputs:
-            dataset_id = output['dataset']['id']
-            self.gi.histories.update_dataset(self.history['id'], dataset_id, tags=[self.p_endpoint, msg])
-        self.logger.info("Added tags to job outputs")
+            set_id = output['dataset']['id']
+            self.gi.histories.update_dataset(history_id=self.history['id'], dataset_id=set_id, tags=tag_list)
+        self.logger.info(f"Added tags: {tag_list} to job {job_id} outputs.")
 
 
 
