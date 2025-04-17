@@ -123,8 +123,8 @@ def main():
                     logger.warning("Skipping to the next instance")
                 continue
 
-            try:
-                for pe in useg['endpoints']:
+            for pe in useg['endpoints']:
+                try:
                     galaxy_instance.switch_pulsar(pe)
                     compute_id = pe if pe != 'None' else 'Default'
 
@@ -145,22 +145,29 @@ def main():
                         if key in pre_results and isinstance(pre_results[key], dict):
                             results[useg['name']][compute_id][key].update(pre_results[key])
 
+                except Exception as e:
+                    logger.warning(f"An error occurred while testing {pe}:")
+                    logger.warning(f"{e}")
+                    logger.warning("Continuing...")
+
+                except ConnectionError as e:
+                    logger.warning(f"A Connection error occurred while testing {pe}:")
+                    logger.warning(f"{e}")
+                    logger.warning("Continuing...")
                     
+            try:    
                 galaxy_instance.clean_up()
                 galaxy_instance.switch_pulsar(useg['default_compute_id'])
 
-            
             except Exception as e:
-                logger.warning(f"An error occurred while testing {pe}:")
+                logger.warning(f"An error occurred while cleaning up:")
                 logger.warning(f"{e}")
                 logger.warning("Continuing...")
-                continue
 
             except ConnectionError as e:
-                logger.warning(f"A Connection error occurred while testing {pe}:")
+                logger.warning(f"An error occurred while cleaning up:")
                 logger.warning(f"{e}")
                 logger.warning("Continuing...")
-                continue
 
         try:
             if args.html_report:
