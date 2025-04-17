@@ -49,7 +49,7 @@ class GalaxyTest():
             "interval": 5,
             "timeout": 12000,
             "history_name": "SABER",
-            "keep_history": False
+            "keep_history": True
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
@@ -362,8 +362,9 @@ class GalaxyTest():
                                               "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                               "METRICS": self.gi.jobs.get_metrics(job['id'])
                                               }
-                self._update_history_name(job_id=job["id"], msg='TTO')
-                #self.gi.jobs.cancel_job(job['id'])
+                self._add_tag(job["id"], "saber_tto")
+                #self._update_history_name(job_id=job["id"], msg='TTO')
+
                 
             # Handle completion
             elif job and job['exit_code'] == 0:
@@ -383,8 +384,8 @@ class GalaxyTest():
                 failed_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
                                   "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
                                   "METRICS": self.gi.jobs.get_metrics(job['id'])}
-                self._update_history_name(job_id=job["id"])
-                #self.gi.jobs.cancel_job(job['id'])
+                self._add_tag(job["id"], "err")
+
         return_values = {"SUCCESSFUL_JOBS": successful_jobs, 
                                      "TIMEOUT_JOBS": timeout_jobs, 
                                      "FAILED_JOBS": failed_jobs}
@@ -482,6 +483,14 @@ class GalaxyTest():
             self.purge_histories()
         self.purge_workflow()
         self.logger.info("Clean-up terminated")
+
+    def _add_tag(self, job_id, msg):
+        """Add tag to job"""
+        job_outputs = self.gi.jobs.get_outputs(job_id)
+        for output in job_outputs:
+            dataset_id = output['dataset']['id']
+            self.gi.histories.update_dataset(self.history['id'], dataset_id, tags=[self.p_endpoint, msg])
+
 
 
 
