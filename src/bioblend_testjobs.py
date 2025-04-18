@@ -495,7 +495,10 @@ class GalaxyTest():
     def _add_tag(self, job_id: str, msg_list: list = None):
         """Add tag to job"""
         job_outputs = self.gi.jobs.get_outputs(job_id)
-        tag_list = [self.p_endpoint]
+        p_endpoint = self.p_endpoint
+        if p_endpoint == "None":
+            p_endpoint = "Default"
+        tag_list = [p_endpoint]
         if msg_list and len(msg_list) > 0:
             tag_list.append(msg_list)
         for output in job_outputs:
