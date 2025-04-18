@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-
+import re
 import time
 import json
 from pathlib import Path
@@ -55,6 +55,8 @@ class GalaxyTest():
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
+        self.current_date = datetime.now().strftime('%-d/%-m/%y %H:%M')
+        self.config['history_name'] = f"{self.config.get('history_name', 'SABER')} {self.current_date}"
         self.history_client = HistoryClient(self.gi)
         self.history = None
         self.wf = None
@@ -145,9 +147,7 @@ class GalaxyTest():
         :param history_name: Optional, defaults to "Pulsar Endpoints Test"
         '''
         if history_name is None:
-            history_name = self.config.get('history_name', "Pulsar Endpoints Test")
-        current_date = datetime.now().strftime('%-d/%-m/%y')
-        history_name = f"{history_name} {current_date}"
+            history_name = self.config.get('history_name', f"SABER {self.current_date}")
         # Delete older histories to ensure there's enough free space
         self.purge_histories()
 
@@ -167,6 +167,12 @@ class GalaxyTest():
             raise 
 
 
+    @staticmethod
+    def _clean_string(s: str) -> str:
+        s = re.sub(r'[0-9/:]', '', s)
+        s = s.lower()
+        return s.strip()
+
 
     def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
         '''
@@ -180,26 +186,24 @@ class GalaxyTest():
         '''
         if self.history_client is not None:
             for history in self.history_client.get_histories():
-                if self.config.get('history_name') in history['name'] and purge_new:
+                if self.config.get('history_name') == history['name'] and purge_new:
                     self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
                     self._safe_delete_history(history['id'], purge_bool=True)
                 create_time = self.history_client.show_history(history_id=history['id'], keys=['create_time'])
                 if (datetime.today() - datetime.strptime(create_time['create_time'],
-                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(hours=20) and purge_old:
-                    config_clean = self.config.get('history_name').lower()
-                    history_clean = history.get('name').strip().lower()
-                    check = False
+                                                        "%Y-%m-%dT%H:%M:%S.%f")) > timedelta(hours=36) and purge_old:
+                    config_clean = self._clean_string(self.config.get('history_name'))
+                    history_clean = self._clean_string(history.get('name'))
                     if config_clean in history_clean:
-                        check = True
+                        self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+                        self._safe_delete_history(history['id'], purge_bool=True)
+                        return   
                     history_words = history_clean.split()
                     for word in history_words:
                         if config_clean == word:
-                            check = True
-                            break                           
-                    if check: 
-                        self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
-                        self._safe_delete_history(history['id'], purge_bool=True)
-
+                            self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
+                            self._safe_delete_history(history['id'], purge_bool=True)
+                            return                           
 
 
     '''
@@ -282,8 +286,8 @@ class GalaxyTest():
             self.logger.info(f'Purging Workflow, ID: {self.wf["id"]}')
 
 
-
-    def _tool_id_split(self, tool_id: str) -> str:
+    @staticmethod
+    def _tool_id_split(tool_id: str) -> str:
         '''
         Remove all characters before "/devteam" inclusively, to avoid clutter in the log.
         If the string is not present it leaves the input untouched
@@ -356,7 +360,7 @@ class GalaxyTest():
         for job in jobs:
 
             if job and job['state'] in ['new', 'queued', 'running']:
-                self.logger.info(f'Job {job["id"]} failed due to timeout:')
+                self.logger.info(f'Job {job["id"]} failed due to {TOOL_NAME} timeout:')
                 self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
                 timeout_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
                                               "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
@@ -373,7 +377,10 @@ class GalaxyTest():
                 successful_jobs[job['id']] = {"INFO": self.gi.jobs.show_job(job['id']),
                                               "METRICS": self.gi.jobs.get_metrics(job['id'])
                                               }
-                self._add_tag(job["id"])
+                if self.config.get('clean_history', "onsuccess") == "successful_only":
+                    self._delete_job_out(job["id"])
+                else: 
+                    self._add_tag(job["id"])
 
             else:
                 
@@ -503,9 +510,20 @@ class GalaxyTest():
             tag_list.append(msg_list)
         for output in job_outputs:
             set_id = output['dataset']['id']
-            self.gi.histories.update_dataset(history_id=self.history['id'], dataset_id=set_id, tags=tag_list)
+            self.history_client.update_dataset(history_id=self.history['id'], dataset_id=set_id, tags=tag_list)
         self.logger.info(f"Added tags: {tag_list} to job {job_id} outputs.")
 
+
+
+    def _delete_job_out(self, job_id: str):
+        """Remove successful jobs' datasets"""
+        if not self.gi.jobs.cancel_job(job_id):
+            job_outputs = self.gi.jobs.get_outputs(job_id)
+            for output in job_outputs:
+                set_id = output['dataset']['id']
+                self.history_client.update_dataset(history_id=self.history['id'], dataset_id=set_id, deleted=True)
+                self.history_client.delete_dataset(history_id=self.history['id'], dataset_id=set_id, purge=True)
+                self.logger.info(f"Purging dataset: {set_id}")
 
 
 
