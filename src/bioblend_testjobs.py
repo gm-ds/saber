@@ -180,7 +180,7 @@ class GalaxyTest():
         '''
         if self.history_client is not None:
             for history in self.history_client.get_histories():
-                if history['name'] == self.config.get('history_name') and purge_new:
+                if self.config.get('history_name') in history['name'] and purge_new:
                     self.logger.info(f'Purging History, ID: {history["id"]}, Name: {history["name"]}')
                     self._safe_delete_history(history['id'], purge_bool=True)
                 create_time = self.history_client.show_history(history_id=history['id'], keys=['create_time'])
