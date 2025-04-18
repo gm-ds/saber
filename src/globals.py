@@ -65,6 +65,8 @@ data_inputs:
     file_type: "change_me"  # Correct file type
 
 timeout: 1200  # General timeout value, seconds
-clean_history: onsuccess # Default. Other values: "never", "always"
+clean_history: onsuccess # Default. Other values: "never", "always", "successful_only". The 
+                            # last option removes all datasets of successful jobs and if all jobs
+                            # are successful it clears the history (as "onsuccess")
 
 """
