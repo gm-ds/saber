@@ -904,9 +904,14 @@
                 tab.classList.remove('active');
             });
             
-            // Find and activate the clicked tab
-            const activeTabIndex = (tabType === 'successful') ? 0 : (tabType === 'failed' ? 1 : 2);
-            tabs[activeTabIndex].classList.add('active');
+            // Map tab types to index
+            const tabOrder = ['successful', 'failed', 'running', 'new', 'queued', 'waiting'];
+            const activeTabIndex = tabOrder.indexOf(tabType);
+            
+            // Activate the corresponding tab
+            if (activeTabIndex >= 0) {
+                tabs[activeTabIndex].classList.add('active');
+            }
         }
     </script>
 </body>
