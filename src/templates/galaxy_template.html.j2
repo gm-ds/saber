@@ -683,7 +683,7 @@
                 <!-- Queued Jobs -->
                 <div id="{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-queued" class="tab-content">
                     <h4>Queued Jobs</h4>
-                    {% if compute_data.NEW_JOBS|length == 0 %}
+                    {% if compute_data.QUEUED_JOBS|length == 0 %}
                         <p>No queued jobs found.</p>
                     {% else %}
                         {% for job_id, job_data in compute_data.QUEUED_JOBS.items() %}
