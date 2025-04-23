@@ -61,7 +61,7 @@
             color: #e74c3c;
             font-weight: bold;
         }
-        .job-status-timeout {
+        .job-status-running {
             color: #f39c12;
             font-weight: bold;
         }
@@ -119,7 +119,7 @@
         .failed-badge {
             background-color: #e74c3c;
         }
-        .timeout-badge {
+        .running-badge {
             background-color: #f39c12;
         }
         .tab-content {
@@ -207,7 +207,32 @@
         .custom-table tbody tr:hover {
             background-color: #eaf2f8;
         }
+        .job-status-new {
+            color: #7f8c8d;
+            font-weight: bold;
+        }
 
+        .job-status-queued {
+            color: #95a5a6;
+            font-weight: bold;
+        }
+
+        .job-status-waiting {
+            color: #bdc3c7;
+            font-weight: bold;
+        }
+
+        .new-badge {
+            background-color: #7f8c8d;
+        }
+
+        .queued-badge {
+            background-color: #95a5a6;
+        }
+
+        .waiting-badge {
+            background-color: #bdc3c7;
+        }
     </style>
 </head>
 <body>
@@ -232,7 +257,10 @@
                     <div>
                         <span class="badge">Successful Jobs: {{ compute_data.SUCCESSFUL_JOBS|length }}</span>
                         <span class="badge">Failed Jobs: {{ compute_data.FAILED_JOBS|length }}</span>
-                        <span class="badge">Timeout Jobs: {{ compute_data.TIMEOUT_JOBS|length }}</span>
+                        <span class="badge">Running Jobs: {{ compute_data.RUNNING_JOBS|length }}</span>
+                        <span class="badge">New Jobs: {{ compute_data.NEW_JOBS|length }}</span>
+                        <span class="badge">Queued Jobs: {{ compute_data.QUEUED_JOBS|length }}</span>
+                        <span class="badge">Waiting Jobs: {{ compute_data.WAITING_JOBS|length }}</span>
                     </div>
                 </div>
                 
@@ -245,9 +273,21 @@
                         Failed Jobs
                         <span class="count-badge failed-badge">{{ compute_data.FAILED_JOBS|length }}</span>
                     </div>
-                    <div class="tab" onclick="switchTab('{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-timeout')">
-                        Timeout Jobs
-                        <span class="count-badge timeout-badge">{{ compute_data.TIMEOUT_JOBS|length }}</span>
+                    <div class="tab" onclick="switchTab('{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-running')">
+                        Running Jobs
+                        <span class="count-badge running-badge">{{ compute_data.RUNNING_JOBS|length }}</span>
+                    </div>
+                    <div class="tab" onclick="switchTab('{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-new')">
+                        New Jobs
+                        <span class="count-badge new-badge">{{ compute_data.NEW_JOBS|length }}</span>
+                    </div>
+                    <div class="tab" onclick="switchTab('{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-queued')">
+                        Queued Jobs
+                        <span class="count-badge queued-badge">{{ compute_data.QUEUED_JOBS|length }}</span>
+                    </div>
+                    <div class="tab" onclick="switchTab('{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-waiting')">
+                        Waiting Jobs
+                        <span class="count-badge waiting-badge">{{ compute_data.WAITING_JOBS|length }}</span>
                     </div>
                 </div>
                 
@@ -445,16 +485,16 @@
                     {% endif %}
                 </div>
                 
-                <!-- Timeout Jobs -->
-                <div id="{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-timeout" class="tab-content">
-                    <h4>Timeout Jobs</h4>
-                    {% if compute_data.TIMEOUT_JOBS|length == 0 %}
-                        <p>No timeout jobs found.</p>
+                <!-- Running Jobs -->
+                <div id="{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-running" class="tab-content">
+                    <h4>Running Jobs</h4>
+                    {% if compute_data.RUNNING_JOBS|length == 0 %}
+                        <p>No running jobs found.</p>
                     {% else %}
-                        {% for job_id, job_data in compute_data.TIMEOUT_JOBS.items() %}
+                        {% for job_id, job_data in compute_data.RUNNING_JOBS.items() %}
                             <div class="job-card">
                                 <div class="job-header">
-                                    <h3>Job ID: {{ job_id }} <span class="job-status-timeout">(Status: {{ job_data.INFO.state }})</span></h3>
+                                    <h3>Job ID: {{ job_id }} <span class="job-status-running">(Status: {{ job_data.INFO.state }})</span></h3>
                                     <p>Tool: {{ job_data.INFO.tool_id }}</p>
                                     <div>
                                         <span class="badge">Galaxy v{{ job_data.INFO.galaxy_version }}</span>
@@ -541,6 +581,300 @@
                         {% endfor %}
                     {% endif %}
                 </div>
+
+
+                <!-- New Jobs -->
+                <div id="{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-new" class="tab-content">
+                    <h4>New Jobs</h4>
+                    {% if compute_data.NEW_JOBS|length == 0 %}
+                        <p>No new jobs found.</p>
+                    {% else %}
+                        {% for job_id, job_data in compute_data.NEW_JOBS.items() %}
+                            <div class="job-card">
+                                <div class="job-header">
+                                    <h3>Job ID: {{ job_id }} <span class="job-status-new">(Status: {{ job_data.INFO.state }})</span></h3>
+                                    <p>Tool: {{ job_data.INFO.tool_id }}</p>
+                                    <div>
+                                        <span class="badge">Galaxy v{{ job_data.INFO.galaxy_version }}</span>
+                                        <span class="badge">Created: {{ job_data.INFO.create_time|replace('T', ' ') }}</span>
+                                        <span class="badge">Updated: {{ job_data.INFO.update_time|replace('T', ' ') }}</span>
+                                    </div>
+                                </div>
+                                <div class="job-body">
+                                    <div class="info-section">
+                                        <h4>Job Information</h4>
+                                        <table>
+                                            <tr>
+                                                <th>History ID</th>
+                                                <td>{{ job_data.INFO.history_id }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Exit Code</th>
+                                                <td>{{ job_data.INFO.exit_code }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Command Line</th>
+                                                <td>
+                                                    <div class="command-line">{{ job_data.INFO.command_line }}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    
+                                    <div class="metrics-section">
+                                        <h4>Job Metrics</h4>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Metric</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for metric in job_data.METRICS %}
+                                                <tr class="metric-row">
+                                                    <td>{{ metric.title }}</td>
+                                                    <td>{{ metric.value }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <!-- Input/Output Section -->
+                                    <div class="io-section">
+                                        <h4>Inputs & Outputs</h4>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Name</th>
+                                                    <th>ID</th>
+                                                    <th>UUID</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for input_name, input_data in job_data.INFO.inputs.items() %}
+                                                <tr>
+                                                    <td>Input</td>
+                                                    <td>{{ input_name }}</td>
+                                                    <td>{{ input_data.id }}</td>
+                                                    <td>{{ input_data.uuid }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                
+                                                {% for output_name, output_data in job_data.INFO.outputs.items() %}
+                                                <tr>
+                                                    <td>Output</td>
+                                                    <td>{{ output_name }}</td>
+                                                    <td>{{ output_data.id }}</td>
+                                                    <td>{{ output_data.uuid }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <!-- Queued Jobs -->
+                <div id="{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-queued" class="tab-content">
+                    <h4>Queued Jobs</h4>
+                    {% if compute_data.NEW_JOBS|length == 0 %}
+                        <p>No queued jobs found.</p>
+                    {% else %}
+                        {% for job_id, job_data in compute_data.QUEUED_JOBS.items() %}
+                            <div class="job-card">
+                                <div class="job-header">
+                                    <h3>Job ID: {{ job_id }} <span class="job-status-queued">(Status: {{ job_data.INFO.state }})</span></h3>
+                                    <p>Tool: {{ job_data.INFO.tool_id }}</p>
+                                    <div>
+                                        <span class="badge">Galaxy v{{ job_data.INFO.galaxy_version }}</span>
+                                        <span class="badge">Created: {{ job_data.INFO.create_time|replace('T', ' ') }}</span>
+                                        <span class="badge">Updated: {{ job_data.INFO.update_time|replace('T', ' ') }}</span>
+                                    </div>
+                                </div>
+                                <div class="job-body">
+                                    <div class="info-section">
+                                        <h4>Job Information</h4>
+                                        <table>
+                                            <tr>
+                                                <th>History ID</th>
+                                                <td>{{ job_data.INFO.history_id }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Exit Code</th>
+                                                <td>{{ job_data.INFO.exit_code }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Command Line</th>
+                                                <td>
+                                                    <div class="command-line">{{ job_data.INFO.command_line }}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    
+                                    <div class="metrics-section">
+                                        <h4>Job Metrics</h4>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Metric</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for metric in job_data.METRICS %}
+                                                <tr class="metric-row">
+                                                    <td>{{ metric.title }}</td>
+                                                    <td>{{ metric.value }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <!-- Input/Output Section -->
+                                    <div class="io-section">
+                                        <h4>Inputs & Outputs</h4>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Name</th>
+                                                    <th>ID</th>
+                                                    <th>UUID</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for input_name, input_data in job_data.INFO.inputs.items() %}
+                                                <tr>
+                                                    <td>Input</td>
+                                                    <td>{{ input_name }}</td>
+                                                    <td>{{ input_data.id }}</td>
+                                                    <td>{{ input_data.uuid }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                
+                                                {% for output_name, output_data in job_data.INFO.outputs.items() %}
+                                                <tr>
+                                                    <td>Output</td>
+                                                    <td>{{ output_name }}</td>
+                                                    <td>{{ output_data.id }}</td>
+                                                    <td>{{ output_data.uuid }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <!-- Waiting Jobs -->
+                <div id="{{ server_name|replace('.', '-') }}-{{ compute_id|replace('.', '-') }}-waiting" class="tab-content">
+                    <h4>Waiting Jobs</h4>
+                    {% if compute_data.WAITING_JOBS|length == 0 %}
+                        <p>No waiting jobs found.</p>
+                    {% else %}
+                        {% for job_id, job_data in compute_data.WAITING_JOBS.items() %}
+                            <div class="job-card">
+                                <div class="job-header">
+                                    <h3>Job ID: {{ job_id }} <span class="job-status-waiting">(Status: {{ job_data.INFO.state }})</span></h3>
+                                    <p>Tool: {{ job_data.INFO.tool_id }}</p>
+                                    <div>
+                                        <span class="badge">Galaxy v{{ job_data.INFO.galaxy_version }}</span>
+                                        <span class="badge">Created: {{ job_data.INFO.create_time|replace('T', ' ') }}</span>
+                                        <span class="badge">Updated: {{ job_data.INFO.update_time|replace('T', ' ') }}</span>
+                                    </div>
+                                </div>
+                                <div class="job-body">
+                                    <div class="info-section">
+                                        <h4>Job Information</h4>
+                                        <table>
+                                            <tr>
+                                                <th>History ID</th>
+                                                <td>{{ job_data.INFO.history_id }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Exit Code</th>
+                                                <td>{{ job_data.INFO.exit_code }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Command Line</th>
+                                                <td>
+                                                    <div class="command-line">{{ job_data.INFO.command_line }}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    
+                                    <div class="metrics-section">
+                                        <h4>Job Metrics</h4>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Metric</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for metric in job_data.METRICS %}
+                                                <tr class="metric-row">
+                                                    <td>{{ metric.title }}</td>
+                                                    <td>{{ metric.value }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <!-- Input/Output Section -->
+                                    <div class="io-section">
+                                        <h4>Inputs & Outputs</h4>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Name</th>
+                                                    <th>ID</th>
+                                                    <th>UUID</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for input_name, input_data in job_data.INFO.inputs.items() %}
+                                                <tr>
+                                                    <td>Input</td>
+                                                    <td>{{ input_name }}</td>
+                                                    <td>{{ input_data.id }}</td>
+                                                    <td>{{ input_data.uuid }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                
+                                                {% for output_name, output_data in job_data.INFO.outputs.items() %}
+                                                <tr>
+                                                    <td>Output</td>
+                                                    <td>{{ output_name }}</td>
+                                                    <td>{{ output_data.id }}</td>
+                                                    <td>{{ output_data.uuid }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+
             </div>
             {% endfor %}
         </div>

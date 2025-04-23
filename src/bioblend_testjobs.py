@@ -354,48 +354,69 @@ class GalaxyTest():
         :return: Integer to indicate failure or success
         :rtype: int
         '''
-        timeout_jobs = {}
+        running_jobs = {}
+        queued_jobs = {}
+        new_jobs = {}
+        waiting_jobs = {}
         successful_jobs = {}
         failed_jobs = {}
         for job in jobs:
+            if job:
+                if job['state'] in ['new', 'queued', 'running', 'waiting']:
+                    self.logger.info(f'Job {job["id"]} reached {TOOL_NAME} timeout:')
+                    self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])} Status: {job["state"]}')
+                    self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
+                    self.err_tracker = True
+                    if job['state'] == 'running':
+                        running_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                                    "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                                    "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                                    }
+                    if job['state'] == 'new':
+                        new_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                                    "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                                    "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                                    }
+                    if job['state'] == 'queued':
+                        queued_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                                    "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                                    "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                                    }
+                    if job['state'] == 'waiting':
+                        waiting_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                                    "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                                    "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                                    }
+                        
+                # Handle completion
+                elif job['exit_code'] == 0 or job['state'] == 'ok':
+                    self.logger.info(f'Job {job["id"]} succeeded:')
+                    self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
+                    successful_jobs[job['id']] = {"INFO": self.gi.jobs.show_job(job['id']),
+                                                "METRICS": self.gi.jobs.get_metrics(job['id'])
+                                                }
+                    if self.config.get('clean_history', "onsuccess") == "successful_only":
+                        self._delete_job_out(job["id"])
+                    else: 
+                        self._add_tag(job["id"])
 
-            if job and job['state'] in ['new', 'queued', 'running']:
-                self.logger.info(f'Job {job["id"]} failed due to {TOOL_NAME} timeout:')
-                self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
-                timeout_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
-                                              "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
-                                              "METRICS": self.gi.jobs.get_metrics(job['id'])
-                                              }
-                self._add_tag(job["id"], msg_list="saber_tto")
-                self.err_tracker = True
-
-                
-            # Handle completion
-            elif job and job['exit_code'] == 0:
-                self.logger.info(f'Job {job["id"]} succeeded:')
-                self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
-                successful_jobs[job['id']] = {"INFO": self.gi.jobs.show_job(job['id']),
-                                              "METRICS": self.gi.jobs.get_metrics(job['id'])
-                                              }
-                if self.config.get('clean_history', "onsuccess") == "successful_only":
-                    self._delete_job_out(job["id"])
-                else: 
-                    self._add_tag(job["id"])
-
-            else:
-                
-                # Handle failure
-                job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
-                self.logger.info(f'Job {job["id"]} failed (exit_code: {job_exit_code}):')
-                self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
-                failed_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
-                                  "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
-                                  "METRICS": self.gi.jobs.get_metrics(job['id'])}
-                self._add_tag(job["id"], msg_list="err")
-                self.err_tracker = True
+                else:
+                    
+                    # Handle failure
+                    job_exit_code = job['exit_code'] if job and job['exit_code'] is not None else 'None'
+                    self.logger.info(f'Job {job["id"]} failed (exit_code: {job_exit_code}):')
+                    self.logger.info(f'         Tool: {self._tool_id_split(job["tool_id"])}')
+                    failed_jobs[job['id']] = {"INFO":self.gi.jobs.show_job(job['id']),
+                                    "PROBLEMS": self.gi.jobs.get_common_problems(job['id']),
+                                    "METRICS": self.gi.jobs.get_metrics(job['id'])}
+                    self._add_tag(job["id"], msg_list="err")
+                    self.err_tracker = True
 
         return_values = {"SUCCESSFUL_JOBS": successful_jobs, 
-                                     "TIMEOUT_JOBS": timeout_jobs, 
+                                     "RUNNING_JOBS": running_jobs,
+                                     "QUEUED_JOBS": queued_jobs,
+                                     "NEW_JOBS": new_jobs,
+                                     "WAITING_JOBS": waiting_jobs, 
                                      "FAILED_JOBS": failed_jobs}
         return return_values
 

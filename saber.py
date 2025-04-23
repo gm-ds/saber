@@ -134,14 +134,17 @@ def main():
                     if compute_id not in results[useg['name']]:
                         results[useg['name']][compute_id] = {
                             "SUCCESSFUL_JOBS": {}, 
-                            "TIMEOUT_JOBS": {}, 
+                            "RUNNING_JOBS": {},
+                            "QUEUED_JOBS": {},
+                            "NEW_JOBS": {},
+                            "WAITING_JOBS": {},
                             "FAILED_JOBS": {}
                         }
 
                     pre_results = galaxy_instance.execute_and_monitor_workflow(
                         workflow_input = input
                         )
-                    for key in ["SUCCESSFUL_JOBS", "TIMEOUT_JOBS", "FAILED_JOBS"]:
+                    for key in ["SUCCESSFUL_JOBS", "RUNNING_JOBS", "FAILED_JOBS", "WAITING_JOBS", "QUEUED_JOBS", "NEW_JOBS"]:
                         if key in pre_results and isinstance(pre_results[key], dict):
                             results[useg['name']][compute_id][key].update(pre_results[key])
 
@@ -195,11 +198,12 @@ def main():
 
         for g_name, g_data in results.items():
             for com_id, job_data in g_data.items():
-                if job_data.get("TIMEOUT_JOBS"):
-                    logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
-                    logger.warning(f"Exiting with code: {ERR_CODES['tto']}")
-                    if not conn_rr or not exc:
-                        sys.exit(ERR_CODES['tto'])
+                for k in ["RUNNING_JOBS","WAITING_JOBS", "QUEUED_JOBS", "NEW_JOBS"]:
+                    if job_data.get(k):
+                        logger.warning(f"Uncompleted jobs found in {g_name}/{com_id}.")
+                        logger.warning(f"Exiting with code: {ERR_CODES['tto']}")
+                        if not conn_rr or not exc:
+                            sys.exit(ERR_CODES['tto'])
                 if job_data.get("FAILED_JOBS"):
                     logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
                     logger.warning(f"Exiting with code: {ERR_CODES['job']}")

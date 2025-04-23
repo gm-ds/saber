@@ -58,7 +58,7 @@ class Report:
         self.logger.info("Processing data...")
         for available_at, endpoints_data in compute_data.items():
             for endpoint, jobs_data in endpoints_data.items():
-                job_types = ["SUCCESSFUL_JOBS", "FAILED_JOBS", "TIMEOUT_JOBS"]
+                job_types = ["SUCCESSFUL_JOBS", "RUNNING_JOBS", "FAILED_JOBS", "WAITING_JOBS", "QUEUED_JOBS", "NEW_JOBS"]
 
                 instances_counts.setdefault(available_at, 0)
                 instances_counts[available_at] += 1
@@ -67,14 +67,14 @@ class Report:
                     pies[available_at] = {}
                 if endpoint not in pies[available_at]:
                     pies[available_at][endpoint] = {}
-
-                pies[available_at][endpoint]['tot'] = (len(jobs_data.get("TIMEOUT_JOBS", {})) + 
-                                                       len(jobs_data.get("FAILED_JOBS", {})) + len(jobs_data.get("SUCCESSFUL_JOBS", {})))
+                    pies[available_at][endpoint]['tot'] = 0
+                for k in job_types:
+                    pies[available_at][endpoint]['tot'] += len(jobs_data.get(k, {}))
                 if pies[available_at][endpoint]['tot'] > 0:
                     pies[available_at][endpoint]['bb_errors'] = False
-                    pies[available_at][endpoint]['success'] = (len(jobs_data.get("SUCCESSFUL_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
-                    pies[available_at][endpoint]['failed'] = (len(jobs_data.get("FAILED_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
-                    pies[available_at][endpoint]['timeout'] = (len(jobs_data.get("TIMEOUT_JOBS", {}))/pies[available_at][endpoint]['tot']) * 100
+                    for k in job_types:
+                        key = k.split('_')[0].lower()  
+                        pies[available_at][endpoint][key] = (len(jobs_data.get(k, {}))/pies[available_at][endpoint]['tot']) * 100
                 else:
                     pies[available_at][endpoint]['bb_errors'] = True
 
