@@ -23,6 +23,9 @@ Test run: {{ date.sDATETIME }}{% if date.nDATETIME %}
 - **Successful Jobs:** {{ compute_data.SUCCESSFUL_JOBS|length }}
 - **Failed Jobs:** {{ compute_data.FAILED_JOBS|length }}
 - **Running Jobs:** {{ compute_data.RUNNING_JOBS|length }}
+- **Queued Jobs:** {{ compute_data.QUEUED_JOBS|length }}
+- **Waiting Jobs:** {{ compute_data.WAITING_JOBS|length }}
+- **New Jobs:** {{ compute_data.NEW_JOBS|length }}
 
 #### Failed Jobs
 {% if compute_data.FAILED_JOBS|length == 0 -%}
