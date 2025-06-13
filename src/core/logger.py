@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import os
 import logging
+import os
 import platform
 from pathlib import Path
+
 from platformdirs import user_log_dir
 
 

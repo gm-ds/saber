@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
-from src.logger import os
-from src. secure_config import tempfile, Path
+import os
+import tempfile
+from pathlib import Path
+
+from jinja2 import Template
 
 class Report:
     def __init__(self, path: Path, dict_results: dict, configuration: dict):
         self.path = path
         self.saber_results = dict_results
         self.config = configuration
+
 
     def _write_file(self, content):
         try:
@@ -102,10 +106,9 @@ class Report:
 
 
     def output_page(self) -> None:
-        from jinja2 import Template
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        template_path = os.path.join(script_dir, 'templates', 'galaxy_template.html.j2')
+        template_path = os.path.join(script_dir, 'output', 'templates', 'galaxy_template.html.j2')
 
         with open(template_path, 'r') as f:
             template_str = f.read()
@@ -121,10 +124,9 @@ class Report:
 
 
     def output_summary(self, standalone: bool):
-        from jinja2 import Template
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        table_path = os.path.join(script_dir, 'templates', 'table_summary.html.j2')
+        table_path = os.path.join(script_dir, 'output', 'templates', 'table_summary.html.j2')
 
         with open(table_path, 'r') as f:
             template_table_str = f.read()
@@ -142,10 +144,9 @@ class Report:
             return rendered_html
         
     def output_md(self) -> None:
-        from jinja2 import Template
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        template_path = os.path.join(script_dir, 'templates', 'galaxy_report.md.j2')
+        template_path = os.path.join(script_dir, 'output', 'templates', 'galaxy_report.md.j2')
 
         with open(template_path, 'r') as f:
             template_str = f.read()

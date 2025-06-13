@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 
+import base64
 import os
 import stat
-import yaml
-import base64
-import tempfile
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Optional
+
+import yaml
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC

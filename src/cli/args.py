@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import os
 import argparse
-from pathlib import Path
+import os
 from datetime import datetime
+from pathlib import Path
 
 HTML_DEFAULT = Path.home().joinpath(f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')
 TABLE_DEFAULT = Path.home().joinpath(f'saber_summary_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html')

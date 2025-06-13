@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
 
-import time
 import json
-from pathlib import Path
-from src.globals import API_EXIT, PATH_EXIT, TOOL_NAME
+import time
 from datetime import datetime, timedelta
-from src.logger import CustomLogger
+from pathlib import Path
+
 from bioblend import ConnectionError
-from bioblend.galaxy import datasets
-from bioblend.galaxy import GalaxyInstance
+from bioblend.galaxy import GalaxyInstance, datasets
 from bioblend.galaxy.histories import HistoryClient
+
+from src.core import CustomLogger
+from src.utils import API_EXIT, PATH_EXIT, TOOL_NAME
 
 
 class GalaxyTest():
