@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 
+import json
 import sys
+from datetime import datetime, timedelta
 
 
 def print_example():
-    from src.globals import example
+    from src.utils import example
     print(example)
     sys.exit(0)
 
 
 
 def main():
-    from datetime import timedelta
-    from src.logger import CustomLogger
-    from src.args import Parser, datetime
-    from src.secure_config import SecureConfig
-    from src.bioblend_testjobs import GalaxyTest, json
-    from src.globals import TOOL_NAME, PATH_EXIT, TIMEOUT_EXIT, GAL_ERROR, JOB_ERR_EXIT, P, CONFIG_PATH
+    from src.utils import (GAL_ERROR, JOB_ERR_EXIT, PATH_EXIT,
+                     TIMEOUT_EXIT, TOOL_NAME, P, mock_get_default_config_path)
+    from src.core import (CustomLogger, GalaxyTest, SecureConfig)
+    from src.cli import Parser
 
 
     results = dict()
 
     try:
-        args = Parser(P, CONFIG_PATH).arguments()
+        args = Parser(P, mock_get_default_config_path()).arguments()
 
         logger = CustomLogger(TOOL_NAME, args.log_dir)
         logger.info("Starting...")
@@ -148,18 +148,18 @@ def main():
             logger.warning("Skipping to the next instance")
 
     if args.html_report:
-        from src.html_output import Report
+        from src.output import Report
         report = Report(args.html_report, results, config)
         report.output_page()
 
     if args.md_report:
-        from src.html_output import Report
+        from src.output import Report
         report = Report(args.md_report, results, config)
         report.output_md()
 
 
     if args.table_html_report:
-        from src.html_output import Report
+        from src.output import Report
         summary = Report(args.table_html_report, results, config)
         summary.output_summary(True)
 
