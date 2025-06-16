@@ -15,8 +15,7 @@ class Parser():
         self.parser = argparse.ArgumentParser(description="Tool to test multiple useGalaxy instances and Pulsar Endpoints")
         self.parser.add_argument('-p', '--password', default=self.place_holder, help='Password to decrypt and encrypt the settings YAML file.\
                             \nAccepts txt files and strings')
-        #self.parser.add_argument('-i', '--influxdb', action='store_true', help='Send metrics to InfluxDB when the argument is used.\
-        #                          Credentials must be defined in configuration file.')
+        self.parser.add_argument('-j', '--print_json', action='store_true', help='Prints results as a JSON dictionary')
         self.parser.add_argument('-r', '--html_report', metavar='PATH', type=Path, nargs='?',
                             const= HTML_DEFAULT, help='Enables HTML report, it accepts a path for the output:/path/report.html\
                                                             \nDefaults to \'~/saber_report_YYYY-MM-DD_HH-MM-SS.html\' otherwise.')
