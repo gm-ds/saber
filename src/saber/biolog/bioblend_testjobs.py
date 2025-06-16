@@ -10,7 +10,7 @@ from bioblend import ConnectionError
 from bioblend.galaxy import GalaxyInstance, datasets
 from bioblend.galaxy.histories import HistoryClient
 
-from saber.biolog import LoggerLike
+from saber.biolog.loglike import LoggerLike
 
 
 class GalaxyTest():
