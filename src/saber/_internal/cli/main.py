@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 from saber._internal.cli import Parser
-from saber._internal.utils import TOOL_NAME, P, mock_get_default_config_path
+from saber._internal.utils import mock_get_default_config_path
+from saber._internal.utils.globals import TOOL_NAME, P
 from saber.bbl import CustomLogger
 
-def _main():
+def main() -> int:
 
     args = Parser(P, mock_get_default_config_path()).arguments()
     logger = CustomLogger(TOOL_NAME, args.log_dir)

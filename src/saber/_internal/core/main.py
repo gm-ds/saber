@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
-def _job_launcher(_args, _logger) -> int:
-    from saber._internal.cli import  _init_config, _reports_helper
+from argparse import Namespace
+
+
+def _job_launcher(_args: Namespace, _logger) -> int:
+    from saber._internal.cli import _init_config, _reports_helper
     from saber._internal.commands import (_html_report, _md_report,
-                                          _table_html_report, _print_json)
-    from saber._internal.utils import (GAL_ERROR, JOB_ERR_EXIT, PATH_EXIT, TIMEOUT_EXIT, TOOL_NAME)
+                                          _print_json, _table_html_report)
+    from saber._internal.utils.globals import (GAL_ERROR, JOB_ERR_EXIT,
+                                               PATH_EXIT, TIMEOUT_EXIT,
+                                               TOOL_NAME)
     from saber.bbl import GalaxyTest
 
     config = _init_config(logger_class=_logger,
@@ -14,7 +19,7 @@ def _job_launcher(_args, _logger) -> int:
     if not isinstance(config, dict):
         return config
 
-    config = _reports_helper(_args.html_report, _args.table_html_report, _args.md_report, config)
+    config = _reports_helper(_args, config)
 
     results = dict()
 
@@ -96,7 +101,7 @@ def _job_launcher(_args, _logger) -> int:
 
     _table_html_report(_args, results, config)
 
-    _print_json(results)
+    _print_json(_args, results)
 
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():

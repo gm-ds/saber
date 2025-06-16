@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from _internal.utils import _example
+from saber._internal.utils.example_config import _example
 
-def _example_settings():
+def _example_settings() -> None:
     print(_example)
     return 0

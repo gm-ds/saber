@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from utils import TOOL_NAME
+from saber._internal.utils.globals import TOOL_NAME
 
 
 # Mock Functions

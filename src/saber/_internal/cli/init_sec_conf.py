@@ -3,7 +3,7 @@
 import sys
 
 from saber._internal.core import SecureConfig
-from _internal.utils import (PATH_EXIT,
+from saber._internal.utils.globals import (PATH_EXIT,
                              TOOL_NAME,)
 
 def _init_config(logger_class: any, password, config_path) -> dict:
