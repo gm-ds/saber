@@ -1,3 +1,3 @@
-from src.utils.mock_functions import mock_get_default_config_path
-from src.utils.example_config import example
-from src.utils.globals import *
+from .mock_functions import mock_get_default_config_path
+from .example_config import _example
+from .globals import *

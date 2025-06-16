@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-example = """---
+_example = """---
 usegalaxy_instances:
   - name: Main
     url: "usegalaxy.examples"  # Replace with the actual instance URL

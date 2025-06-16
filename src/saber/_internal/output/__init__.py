@@ -1,1 +1,1 @@
-from src.output import Report
+from saber._internal.output import Report

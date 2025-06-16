@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+
+def _job_launcher(_args, _logger) -> int:
+    from saber._internal.cli import  _init_config, _reports_helper
+    from saber._internal.commands import (_html_report, _md_report,
+                                          _table_html_report, _print_json)
+    from saber._internal.utils import (GAL_ERROR, JOB_ERR_EXIT, TIMEOUT_EXIT, TOOL_NAME)
+    from saber.lib import GalaxyTest
+
+    config = _init_config(logger_class=_logger,
+                password=_args.password,
+                config_path=_args.settings,
+                )
+    if not isinstance(config, dict):
+        return config
+
+    config = _reports_helper(_args.html_report, _args.table_html_report, _args.md_report, config)
+
+    results = dict()
+
+    for i in range(len(config['usegalaxy_instances'])):
+
+        useg = dict(config['usegalaxy_instances'][i])
+        copyconf = config.copy()
+        copyconf.pop("usegalaxy_instances", None)
+        copyconf.update(useg)
+        useg = copyconf
+
+        galaxy_instance = GalaxyTest(
+            useg['url'], 
+            useg['api'], 
+            useg.get('email', None), 
+            useg.get('password', None), 
+            useg, 
+            _logger,
+            TOOL_NAME,
+            )
+
+        try:
+            input = galaxy_instance.test_job_set_up()
+
+            for pe in useg['endpoints']:
+                galaxy_instance.switch_pulsar(pe)
+                compute_id = pe if pe != 'None' else 'Default'
+
+                if useg['name'] not in results:
+                    results[useg['name']] = {}
+
+                if compute_id not in results[useg['name']]:
+                    results[useg['name']][compute_id] = {
+                        "SUCCESSFUL_JOBS": {}, 
+                        "TIMEOUT_JOBS": {}, 
+                        "FAILED_JOBS": {},
+                    }
+
+                pre_results = galaxy_instance.execute_and_monitor_workflow(
+                    workflow_input = input
+                    )
+                for key in ["SUCCESSFUL_JOBS", "TIMEOUT_JOBS", "FAILED_JOBS"]:
+                    if key in pre_results and isinstance(pre_results[key], dict):
+                        results[useg['name']][compute_id][key].update(pre_results[key])
+
+                
+            _logger.info("Cleaning Up...")
+            galaxy_instance.purge_histories()
+            galaxy_instance.purge_workflow()
+            galaxy_instance.switch_pulsar(useg['default_compute_id'])
+            _logger.info("Test completed")
+
+        except KeyboardInterrupt:
+            _logger.warning("Test interrupted")
+            galaxy_instance.purge_histories()
+            galaxy_instance.purge_workflow()
+            _logger.info("Clean-up terminated")
+            print("\n")
+            return 0
+
+
+        except Exception as e:
+            _logger.warning(f"Error: {e}")
+            galaxy_instance.purge_histories()
+            galaxy_instance.purge_workflow()
+            _logger.info("Clean-up terminated")
+            if i == len(config['usegalaxy_instances'])-1:
+                _logger.warning("Exiting with error")
+                return GAL_ERROR
+            _logger.warning("Skipping to the next instance")
+
+    _html_report(_args,results,config)
+
+    _md_report(_args, results, config)
+
+    _table_html_report(_args, results, config)
+
+    _print_json(results)
+
+    for g_name, g_data in results.items():
+        for com_id, job_data in g_data.items():
+            if job_data.get("TIMEOUT_JOBS"):
+                _logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
+                _logger.warning(f"Exiting with code: {TIMEOUT_EXIT}")
+                return TIMEOUT_EXIT
+            if job_data.get("FAILED_JOBS"):
+                _logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
+                _logger.warning(f"Exiting with code: {JOB_ERR_EXIT}")
+                return JOB_ERR_EXIT
+    return 0
