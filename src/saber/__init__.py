@@ -1,1 +1,1 @@
-from saber.lib import GalaxyTest, CustomLogger
+from saber.bbl import GalaxyTest, CustomLogger

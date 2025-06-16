@@ -6,7 +6,7 @@ import sys
 from saber._internal.cli import *
 from saber._internal.commands import *
 from saber._internal.utils import TOOL_NAME, P, mock_get_default_config_path
-from saber.lib import CustomLogger
+from saber.bbl import CustomLogger
 
 
 def main():

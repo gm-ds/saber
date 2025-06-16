@@ -10,7 +10,7 @@ from bioblend import ConnectionError
 from bioblend.galaxy import GalaxyInstance, datasets
 from bioblend.galaxy.histories import HistoryClient
 
-from saber.lib import CustomLogger
+from saber.bbl import CustomLogger
 from saber._internal.utils import API_EXIT, PATH_EXIT
 
 

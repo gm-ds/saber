@@ -5,7 +5,7 @@ def _job_launcher(_args, _logger) -> int:
     from saber._internal.commands import (_html_report, _md_report,
                                           _table_html_report, _print_json)
     from saber._internal.utils import (GAL_ERROR, JOB_ERR_EXIT, TIMEOUT_EXIT, TOOL_NAME)
-    from saber.lib import GalaxyTest
+    from saber.bbl import GalaxyTest
 
     config = _init_config(logger_class=_logger,
                 password=_args.password,
