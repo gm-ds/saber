@@ -4,7 +4,7 @@ def _job_launcher(_args, _logger) -> int:
     from saber._internal.cli import  _init_config, _reports_helper
     from saber._internal.commands import (_html_report, _md_report,
                                           _table_html_report, _print_json)
-    from saber._internal.utils import (GAL_ERROR, JOB_ERR_EXIT, TIMEOUT_EXIT, TOOL_NAME)
+    from saber._internal.utils import (GAL_ERROR, JOB_ERR_EXIT, PATH_EXIT, TIMEOUT_EXIT, TOOL_NAME)
     from saber.bbl import GalaxyTest
 
     config = _init_config(logger_class=_logger,
@@ -37,7 +37,11 @@ def _job_launcher(_args, _logger) -> int:
             )
 
         try:
-            input = galaxy_instance.test_job_set_up()
+            try:
+                input = galaxy_instance.test_job_set_up()
+            except SystemExit as e:
+                _logger.error(f"Program exiting with code {e}")
+                return PATH_EXIT
 
             for pe in useg['endpoints']:
                 galaxy_instance.switch_pulsar(pe)

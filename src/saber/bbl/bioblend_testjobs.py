@@ -11,7 +11,6 @@ from bioblend.galaxy import GalaxyInstance, datasets
 from bioblend.galaxy.histories import HistoryClient
 
 from saber.bbl import CustomLogger
-from saber._internal.utils import API_EXIT, PATH_EXIT
 
 
 class GalaxyTest():
@@ -34,9 +33,9 @@ class GalaxyTest():
 
     '''
     def __init__(self, url: str, key: str, email: str = None, gpassword: str = None, 
-                 config: dict = None, class_logger = None, tool_name = str):
+                 config: dict = None, logger_ins = None, tool_name = str):
         #Initialize GalaxyInstance
-        self.logger = class_logger if isinstance(class_logger, CustomLogger) else  CustomLogger(tool_name)
+        self.logger = logger_ins if isinstance(logger_ins, CustomLogger) else  CustomLogger(tool_name)
         self.gi = GalaxyInstance(url, email, gpassword) if ((email is not None) and (gpassword is not None)) else GalaxyInstance(url, key)
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")
@@ -239,7 +238,7 @@ class GalaxyTest():
         wf_path = self.config.get('ga_path', None) if wf_path is None else wf_path
         if wf_path is None:
             self.logger.error("No workflow path provided in config or arguments.")
-            raise SystemExit(PATH_EXIT)
+            raise SystemExit(1)
 
         wf_path = Path(wf_path).expanduser()
 
@@ -267,7 +266,7 @@ class GalaxyTest():
             self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
         else:
             self.logger.error(f"Workflow path does not exist: {wf_path}")
-            raise SystemExit(PATH_EXIT)
+            raise SystemExit(1)
 
 
 
