@@ -2,20 +2,18 @@
 
 from argparse import Namespace
 
+from saber.biolog import LoggerLike
 
-def _job_launcher(_args: Namespace, _logger) -> int:
+
+def _job_launcher(_args: Namespace, Logger: LoggerLike) -> int:
     from saber._internal.cli import _init_config, _reports_helper
     from saber._internal.commands import (_html_report, _md_report,
                                           _print_json, _table_html_report)
     from saber._internal.utils.globals import (GAL_ERROR, JOB_ERR_EXIT,
-                                               PATH_EXIT, TIMEOUT_EXIT,
-                                               TOOL_NAME)
-    from saber.bbl import GalaxyTest
+                                               PATH_EXIT, TIMEOUT_EXIT)
+    from saber.biolog import GalaxyTest
 
-    config = _init_config(logger_class=_logger,
-                password=_args.password,
-                config_path=_args.settings,
-                )
+    config = _init_config(Logger,_args)
     if not isinstance(config, dict):
         return config
 
@@ -37,15 +35,14 @@ def _job_launcher(_args: Namespace, _logger) -> int:
             useg.get('email', None), 
             useg.get('password', None), 
             useg, 
-            _logger,
-            TOOL_NAME,
+            Logger,
             )
 
         try:
             try:
                 input = galaxy_instance.test_job_set_up()
             except SystemExit as e:
-                _logger.error(f"Program exiting with code {e}")
+                Logger.error(f"Program exiting with code {e}")
                 return PATH_EXIT
 
             for pe in useg['endpoints']:
@@ -70,30 +67,30 @@ def _job_launcher(_args: Namespace, _logger) -> int:
                         results[useg['name']][compute_id][key].update(pre_results[key])
 
                 
-            _logger.info("Cleaning Up...")
+            Logger.info("Cleaning Up...")
             galaxy_instance.purge_histories()
             galaxy_instance.purge_workflow()
             galaxy_instance.switch_pulsar(useg['default_compute_id'])
-            _logger.info("Test completed")
+            Logger.info("Test completed")
 
         except KeyboardInterrupt:
-            _logger.warning("Test interrupted")
+            Logger.warning("Test interrupted")
             galaxy_instance.purge_histories()
             galaxy_instance.purge_workflow()
-            _logger.info("Clean-up terminated")
+            Logger.info("Clean-up terminated")
             print("\n")
             return 0
 
 
         except Exception as e:
-            _logger.warning(f"Error: {e}")
+            Logger.warning(f"Error: {e}")
             galaxy_instance.purge_histories()
             galaxy_instance.purge_workflow()
-            _logger.info("Clean-up terminated")
+            Logger.info("Clean-up terminated")
             if i == len(config['usegalaxy_instances'])-1:
-                _logger.warning("Exiting with error")
+                Logger.warning("Exiting with error")
                 return GAL_ERROR
-            _logger.warning("Skipping to the next instance")
+            Logger.warning("Skipping to the next instance")
 
     _html_report(_args,results,config)
 
@@ -106,11 +103,11 @@ def _job_launcher(_args: Namespace, _logger) -> int:
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():
             if job_data.get("TIMEOUT_JOBS"):
-                _logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
-                _logger.warning(f"Exiting with code: {TIMEOUT_EXIT}")
+                Logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
+                Logger.warning(f"Exiting with code: {TIMEOUT_EXIT}")
                 return TIMEOUT_EXIT
             if job_data.get("FAILED_JOBS"):
-                _logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
-                _logger.warning(f"Exiting with code: {JOB_ERR_EXIT}")
+                Logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
+                Logger.warning(f"Exiting with code: {JOB_ERR_EXIT}")
                 return JOB_ERR_EXIT
     return 0

@@ -10,7 +10,7 @@ from bioblend import ConnectionError
 from bioblend.galaxy import GalaxyInstance, datasets
 from bioblend.galaxy.histories import HistoryClient
 
-from saber.bbl import CustomLogger
+from saber.biolog import LoggerLike
 
 
 class GalaxyTest():
@@ -33,9 +33,9 @@ class GalaxyTest():
 
     '''
     def __init__(self, url: str, key: str, email: str = None, gpassword: str = None, 
-                 config: dict = None, logger_ins = None, tool_name = str):
+                 config: dict = None, Logger: LoggerLike = None):
         #Initialize GalaxyInstance
-        self.logger = logger_ins if isinstance(logger_ins, CustomLogger) else  CustomLogger(tool_name)
+        self.logger = Logger
         self.gi = GalaxyInstance(url, email, gpassword) if ((email is not None) and (gpassword is not None)) else GalaxyInstance(url, key)
         self.logger.update_log_context()
         self.logger.info("useGalaxy connection initialized")

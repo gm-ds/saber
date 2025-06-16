@@ -3,7 +3,7 @@
 from saber._internal.cli import Parser
 from saber._internal.utils import mock_get_default_config_path
 from saber._internal.utils.globals import TOOL_NAME, P
-from saber.bbl import CustomLogger
+from saber.biolog import CustomLogger
 
 def main() -> int:
 
@@ -33,5 +33,5 @@ def main() -> int:
                 args,
                 )
     else:
-        from saber._internal.core.main import _job_launcher
+        from saber._internal.core.wf_launcher import _job_launcher
         return _job_launcher(args, logger)
