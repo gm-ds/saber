@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-#Secure Config
-TOOL_NAME="saber"
+# Secure Config
+TOOL_NAME = "saber"
 
 # Parser Defaults
 P = "place_holder"

@@ -4,7 +4,7 @@ from argparse import Namespace
 from datetime import datetime
 
 
-def _reports_helper(__args: Namespace, settings: dict) -> dict:    
+def _reports_helper(__args: Namespace, settings: dict) -> dict:
     if __args.html_report or __args.table_html_report or __args.md_report:
         start_dt = datetime.now()
         start_d = start_dt.strftime("%b %d, %Y %H:%M")
@@ -13,4 +13,3 @@ def _reports_helper(__args: Namespace, settings: dict) -> dict:
         return settings
     else:
         return settings
-    

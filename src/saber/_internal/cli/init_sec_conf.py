@@ -16,7 +16,7 @@ def _init_config(_logger: LoggerLike, __args: Namespace) -> dict:
         else:
             secure_config_instance = SecureConfig(TOOL_NAME, __args.settings)
             secure_config_instance.initialize_encryption(__args.password)
-        
+
         _config = secure_config_instance.load_config()
         _config["config_path"] = str(secure_config_instance.get_config_path())
         return _config

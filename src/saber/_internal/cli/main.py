@@ -5,6 +5,7 @@ from saber._internal.utils import mock_get_default_config_path
 from saber._internal.utils.globals import TOOL_NAME, P
 from saber.biolog import CustomLogger
 
+
 def main() -> int:
 
     args = Parser(P, mock_get_default_config_path()).arguments()
@@ -13,25 +14,33 @@ def main() -> int:
 
     if args.example_settings:
         from saber._internal.commands import _example_settings
+
         return _example_settings()
 
     if args.encrypt:
         from saber._internal.commands import _encrypt
-        return _encrypt(logger,
-                args,
-                )
-    
+
+        return _encrypt(
+            logger,
+            args,
+        )
+
     elif args.decrypt:
         from saber._internal.commands import _decrypt
-        return _decrypt(logger,
-                args,
-                )
-        
+
+        return _decrypt(
+            logger,
+            args,
+        )
+
     elif args.edit:
         from saber._internal.commands import _edit
-        return _edit(logger,
-                args,
-                )
+
+        return _edit(
+            logger,
+            args,
+        )
     else:
         from saber._internal.core.wf_launcher import _job_launcher
+
         return _job_launcher(args, logger)

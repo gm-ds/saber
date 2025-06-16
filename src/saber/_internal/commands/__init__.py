@@ -16,4 +16,4 @@ __all__ = [
     "_md_report",
     "_table_html_report",
     "_print_json",
-    ]
+]
