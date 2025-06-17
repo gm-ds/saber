@@ -96,13 +96,6 @@ def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
         - Adds a 'date' key with both formatted string and boolean flag
         - The 'sDATETIME' contains human-readable timestamp for report headers
         - The 'nDATETIME' preserves existing date_string setting from config
-
-    Example:
-        >>> from argparse import Namespace
-        >>> args = Namespace(html_report=True, table_html_report=None, md_report=None)
-        >>> config = {"date_string": True, "other_setting": "value"}
-        >>> updated_config = _reports_helper(args, config)
-        >>> print(updated_config["date"]["sDATETIME"])  # "Jan 15, 2024 14:30"
     """
     # Check if any report generation is requested
     report_requested = any(
@@ -127,3 +120,84 @@ def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
     else:
         # No reports requested, return configuration unchanged
         return Config
+
+
+def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
+    """
+    Main workflow launcher that loads configuration, executes, and reports.
+
+    This function serves as the primary coordinator for the Saber tool's main workflow.
+    It handles configuration initialization, executes the core workflow, and generates
+    various output reports based on command-line arguments.
+
+    Args:
+        Parsed_Args (Namespace): Parsed command-line arguments containing configuration
+                               options, output preferences, and workflow parameters.
+        Logger (LoggerLike): Logger instance for tracking execution progress and errors.
+
+    Returns:
+        int: Exit code indicating the result of the workflow execution:
+             - 0: Successful execution
+             - Non-zero: Error occurred during configuration, execution, or reporting
+
+    Report Generation:
+        The function conditionally generates multiple report formats:
+        - HTML report: Detailed formatted report for web viewing
+        - Markdown report: Text-based report for documentation
+        - HTML table report: Summary table format for quick overview
+        - JSON output: Machine-readable results for automation
+
+    Error Handling:
+        - Configuration errors return early with error code
+        - Workflow execution errors are propagated through return codes
+        - Report generation is attempted independently for each format
+
+    Note:
+        Reports are generated independently, so failure in one format doesn't
+        prevent generation of other formats. The workflow results are expected
+        to be a list where results[0] is the exit code and results[1] contains
+        the data for report generation.
+    """
+    _config = _init_config(Logger, Parsed_Args)
+
+    # Early return if configuration initialization failed
+    if not isinstance(_config, dict):
+        return _config
+
+    # Configure report settings and add timestamp metadata
+    _config = _reports_helper(Parsed_Args, _config)
+
+    # Execute the main workflow
+    from _internal.core import _wf_launcher
+
+    results = _wf_launcher(_config, Logger)
+
+    if isinstance(results, int):
+        return results
+
+    # Generate requested output reports
+    if isinstance(results, list):
+        # Extract workflow data for report generation (results[1])
+        # results[0] contains the exit code, results[1] contains the data
+
+        if Parsed_Args.html_report:
+            from saber._internal.commands import _html_report
+
+            _html_report(Parsed_Args, results[1], _config)
+
+        if Parsed_Args.md_report:
+            from saber._internal.commands import _md_report
+
+            _md_report(Parsed_Args, results[1], _config)
+
+        if Parsed_Args.table_html_report:
+            from saber._internal.commands import _table_html_report
+
+            _table_html_report(Parsed_Args, results[1], _config)
+
+        if Parsed_Args.print_json:
+            from saber._internal.commands import _print_json
+
+            _print_json(Parsed_Args, results[1])
+
+        return results[0]

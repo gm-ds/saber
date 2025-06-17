@@ -26,7 +26,7 @@ def main() -> int:
 
     Initializes the command-line parser, sets up logging, and dispatches to the
     appropriate command handler based on the parsed arguments. This function
-    serves as the central coordinator for all CLI operations.
+    serves as the central "executor" for all CLI operations.
 
     Returns:
         int: Exit code indicating the result of the operation:
@@ -99,6 +99,6 @@ def main() -> int:
     # Default action: execute main workflow
     else:
         # Import and execute the main job launcher workflow
-        from saber._internal.core.wf_launcher import _job_launcher
+        from saber._internal.cli import _launcher
 
-        return _job_launcher(args, logger)
+        return _launcher(args, logger)
