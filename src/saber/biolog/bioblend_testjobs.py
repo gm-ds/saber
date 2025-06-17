@@ -14,23 +14,17 @@ from saber.biolog.loglike import LoggerLike
 
 
 class GalaxyTest:
-    """
-    Creates a GalaxyInstance using bioblend, and logs operations with a custom logger.
-    Both API and mail/password are supported.
+    """Creates a GalaxyInstance using bioblend, and logs operations with a custom logger.
 
-    Set some defaults if not present in the dict passed for initialization.
+    Both API and mail/password are supported. Sets some defaults if not present in the dict passed
+    for initialization.
 
-    :type url: str
-    :param url: API key of a usegalaxy instance, has precedence over mail and password
-    :type email: str
-    :param email: Optional, to be used along the password of the account
-    :type gpassword: str
-    :param gpassword: Optional, to be used along the email of the account
-    :type config: dict
-    :param config: Dictionary conataining everything needed for the test jobs excluding the workflow
-    :type class_logger: Any
-    :param class_logger: Logger instace used by the class.
-
+    Args:
+        url (str): API key of a usegalaxy instance, has precedence over mail and password
+        email (str, optional): To be used along the password of the account
+        gpassword (str, optional): To be used along the email of the account
+        config (dict, optional): Dictionary containing everything needed for the test jobs excluding the workflow
+        class_logger (Any, optional): Logger instance used by the class.
     """
 
     def __init__(
@@ -75,22 +69,17 @@ class GalaxyTest:
         interval: int = None,
         local: bool = None,
     ) -> dict:
-        """
-        Sets up new histories and upload workflows.
+        """Sets up new histories and upload workflows.
 
-        :type inputs_data: dict
-        :param inputs_data: Dictionary with the inputs for the workflow
+        Args:
+            inputs_data (dict, optional): Dictionary with the inputs for the workflow
+            maxwait (int, optional): Maximum wait, in seconds, during upload of the datasets. Defaults to 12000
+            interval (int, optional): Interval between status checks, defaults to 5s.
+            local (bool, optional): Defaults to True. When False it will not change the User
+                Preferences, possibly trying to upload the datasets through a Pulsar Endpoint.
 
-        :type maxwait: int
-        :param maxwait: Maximum wait, in seconds, during upload of the datasets. Defaults to 12000
-
-        :type interval: int
-        :param interval: Interval between status checks, defaults to 5s.
-
-        :type local: bool
-        :param local:   Deafults to True. When False it will not change the User
-                        Preferences, possibly trying to upload the datasets through a Pulsar Endpoint.
-
+        Returns:
+            dict: Dictionary containing the workflow inputs
         """
         inputs_data = self.config["data_inputs"] if inputs_data is None else inputs_data
         interval = self.config["interval"] if interval is None else interval
@@ -126,8 +115,14 @@ class GalaxyTest:
         return data
 
     def _wait_for_dataset(self, maxtime: int = None, interval: int = 5) -> bool:
-        """
-        Wait for dataset upload.
+        """Wait for dataset upload.
+
+        Args:
+            maxtime (int, optional): Maximum time to wait. Defaults to config value.
+            interval (int, optional): Interval between checks. Defaults to 5.
+
+        Returns:
+            bool: True if datasets are ready, False if timeout occurred
         """
         maxtime = self.config["maxwait"] if maxtime is None else maxtime
         dataset_client = datasets.DatasetClient(self.gi)
@@ -161,11 +156,12 @@ class GalaxyTest:
         )
 
     def _create_history(self, history_name: str = None) -> None:
-        """
-        Create a new History, while deleting permanently older histories (>1 week) to ensure enough space.
+        """Create a new History.
 
-        :type history_name: str
-        :param history_name: Optional, defaults to "Pulsar Endpoints Test"
+        Deletes permanently older histories (>1 week) to ensure enough space.
+
+        Args:
+            history_name (str, optional): Defaults to "Pulsar Endpoints Test"
         """
         if history_name is None:
             history_name = self.config.get("history_name", "Pulsar Endpoints Test")
@@ -178,6 +174,12 @@ class GalaxyTest:
         self.logger.info(f'         History ID: {self.history["id"]}')
 
     def _safe_delete_history(self, id, purge_bool) -> None:
+        """Safely delete a history, handling immutable histories.
+
+        Args:
+            id: History ID to delete
+            purge_bool: Whether to purge the history
+        """
         try:
             self.history_client.delete_history(history_id=id, purge=purge_bool)
         except ConnectionError as e:
@@ -187,14 +189,11 @@ class GalaxyTest:
             raise
 
     def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
-        """
-        Purge histories with the same names used during the tests or older than 1 week.
+        """Purge histories with the same names used during tests or older than 1 week.
 
-        :type purge_new: bool
-        :param purge_new: Defaults True - purges all the histories with the name used in the tests
-
-        :type purge_old: bool
-        :param purge_old: Defaults True - purges ALL histories older than one week.
+        Args:
+            purge_new (bool, optional): Defaults True - purges all histories with test name
+            purge_old (bool, optional): Defaults True - purges ALL histories older than one week
         """
         if self.history_client is not None:
             for history in self.history_client.get_histories():
@@ -211,7 +210,9 @@ class GalaxyTest:
                     - datetime.strptime(
                         create_time["create_time"], "%Y-%m-%dT%H:%M:%S.%f"
                     )
-                ) > timedelta(hours=20) and purge_old:
+                ) > timedelta(
+                    hours=20
+                ) and purge_old:  # TODO: Make it customizable through YAML config
                     config_clean = self.config.get("history_name").lower()
                     history_clean = history.get("name").strip().lower()
                     check = False
@@ -228,13 +229,12 @@ class GalaxyTest:
                         )
                         self._safe_delete_history(history["id"], purge_bool=True)
 
-    # Rename History to keep it if an error occurs
     def _update_history_name(self, job_id, msg: str = "ERR") -> None:
-        """
-        Make a new a history to store failed jobs.
+        """Make a new history to store failed jobs.
 
-        :type msg: str, optional
-        :param msg: Small message that is added to the history name to provide some information. Defaults to ERR
+        Args:
+            job_id: ID of the failed job
+            msg (str, optional): Small message added to history name. Defaults to "ERR"
         """
         current_date = datetime.now().strftime("%-d/%-m/%y")
         message = (
@@ -261,11 +261,13 @@ class GalaxyTest:
         self.logger.info(f"Unsuccessful jobs copied to: {message}")
 
     def _upload_workflow(self, wf_path: str = None) -> None:
-        """
-        Upload Workflow file to usegalaxy.
+        """Upload Workflow file to usegalaxy.*
 
-        :type wf_path: str
-        :param wf_path: Path to the workflow file from config.
+        Args:
+            wf_path (str, optional): Path to the workflow file. Defaults to config value.
+
+        Raises:
+            SystemExit: If no workflow path is provided or path doesn't exist
         """
         wf_path = self.config.get("ga_path", None) if wf_path is None else wf_path
         if wf_path is None:
@@ -300,17 +302,19 @@ class GalaxyTest:
             raise SystemExit(1)
 
     def purge_workflow(self) -> None:
-        """
-        Delete permanently the workflow uploaded for the test
-        """
+        """Delete permanently the workflow uploaded for the test."""
         if self.wf is not None:
             self.gi.workflows.delete_workflow(self.wf["id"])
             self.logger.info(f'Purging Workflow, ID: {self.wf["id"]}')
 
     def _tool_id_split(self, tool_id: str) -> str:
-        """
-        Remove all characters before "/devteam" inclusively, to avoid clutter in the log.
-        If the string is not present it leaves the input untouched
+        """Remove characters before "/devteam" inclusively to avoid log clutter.
+
+        Args:
+            tool_id (str): Original tool ID
+
+        Returns:
+            str: Cleaned tool ID
         """
         if "/devteam/" in tool_id:
             return tool_id.split("/devteam/")[1]
@@ -320,17 +324,15 @@ class GalaxyTest:
     def _monitor_job_status(
         self, invocation_id: str, timeout: int = None, sleep_time: int = None
     ) -> dict:
-        """
-        Monitor the status of a job invocation.
+        """Monitor the status of a job invocation.
 
-        :param invocation_id: The ID of the workflow invocation to monitor.
-        :type invocation_id: str
-        :param timeout: Maximum time (in seconds) to wait for job completion. Defaults to 12000s.
-        :type timeout: int, optional
-        :param sleep_time: Time (in seconds) to wait between status checks. Defaults to 5s.
-        :type sleep_time: int, optional
-        :return: A dictionary containing the final job status.
-        :rtype: dict
+        Args:
+            invocation_id (str): The ID of the workflow invocation to monitor
+            timeout (int, optional): Maximum time (in seconds) to wait. Defaults to 12000s
+            sleep_time (int, optional): Time between status checks. Defaults to 5s
+
+        Returns:
+            dict: Dictionary containing the final job status
         """
         sleep_time = self.config["sleep_time"] if sleep_time is None else sleep_time
         timeout = self.config["timeout"] if timeout is None else timeout
@@ -345,16 +347,12 @@ class GalaxyTest:
             for i in range(len(jobs)):
                 current_job = jobs[i]
                 job_state = current_job["state"]
-                # job_exit_code = current_job.get('exit_code')
                 tool_id = self._tool_id_split(current_job.get("tool_id"))
                 self.logger.info(f"    {job_state}    Tool ID: {tool_id}")
 
                 # Continue monitoring
                 if job_state not in ["ok", "error"]:
                     all_jobs_completed = False
-
-                # if job_state == "error":
-                #   self.logger.info(f'The job encountered an error.')
 
             return all_jobs_completed
 
@@ -367,13 +365,13 @@ class GalaxyTest:
     def _handle_job_completion(
         self, jobs: list[dict[str, any]]
     ) -> dict[dict[dict[list[dict[str, any]]]]]:
-        """
-        Job completion handler. Changes History name in case of failures.
+        """Job completion handler. Changes History name in case of failures.
 
-        :type job: dict
-        :param job: Dict containing the job informations
-        :return: Integer to indicate failure or success
-        :rtype: int
+        Args:
+            jobs (list[dict[str, any]]): List of job dictionaries
+
+        Returns:
+            dict: Dictionary containing successful, timeout and failed jobs with their details
         """
         timeout_jobs = {}
         successful_jobs = {}
@@ -382,7 +380,6 @@ class GalaxyTest:
 
             # Cancel job if it's still running
             if job and job["state"] in ["new", "queued", "running"]:
-                # self.logger.info('Canceling test job, timeout.')
                 self.logger.info(f'Job {job["id"]} failed due to timeout:')
                 self.logger.info(
                     f'         Tool: {self._tool_id_split(job["tool_id"])}'
@@ -393,7 +390,6 @@ class GalaxyTest:
                     "METRICS": self.gi.jobs.get_metrics(job["id"]),
                 }
                 self._update_history_name(job_id=job["id"], msg="TTO")
-                # self.gi.jobs.cancel_job(job['id'])
 
             # Handle completion
             elif job and job["exit_code"] == 0:
@@ -408,7 +404,6 @@ class GalaxyTest:
                 self.gi.jobs.cancel_job(job["id"])
 
             else:
-
                 # Handle failure
                 job_exit_code = (
                     job["exit_code"] if job and job["exit_code"] is not None else "None"
@@ -425,7 +420,6 @@ class GalaxyTest:
                     "METRICS": self.gi.jobs.get_metrics(job["id"]),
                 }
                 self._update_history_name(job_id=job["id"])
-                # self.gi.jobs.cancel_job(job['id'])
         return_values = {
             "SUCCESSFUL_JOBS": successful_jobs,
             "TIMEOUT_JOBS": timeout_jobs,
@@ -436,15 +430,14 @@ class GalaxyTest:
     def execute_and_monitor_workflow(
         self, workflow_input: dict, timeout: int = None
     ) -> dict[list[dict[str, any]]]:
-        """
-        Executes a workflow and monitors its status until completion or timeout.
+        """Executes a workflow and monitors its status until completion or timeout.
 
-        :param workflow_input: A dictionary containing the input parameters for the workflow.
-        :type workflow_input: dict
-        :param timeout: Maximum time (in seconds) to wait for the workflow to complete. Defaults to 12000s.
-        :type timeout: int, optional
-        :return: The exit code or status of the executed workflow.
-        :rtype: int
+        Args:
+            workflow_input (dict): Input parameters for the workflow
+            timeout (int, optional): Maximum time to wait (in seconds). Defaults to 12000s
+
+        Returns:
+            dict: Dictionary containing job status information
         """
         timeout = self.config["timeout"] if timeout is None else timeout
         # Workflow invocation
@@ -461,13 +454,11 @@ class GalaxyTest:
         return self._handle_job_completion(final_job_status)
 
     def switch_pulsar(self, p_endpoint: str, name: str = None) -> None:
-        """
-        Switches to a different Pulsar endpoint for processing.
+        """Switches to a different Pulsar endpoint for processing.
 
-        :param p_endpoint: The Pulsar endpoint to switch to.
-        :type p_endpoint: str
-        :param name: An optional name for the Pulsar instance. If not provided, the config value will be used.
-        :type name: str, optional
+        Args:
+            p_endpoint (str): The Pulsar endpoint to switch to
+            name (str, optional): Name for the Pulsar instance. Defaults to config value
         """
         name = self.config["name"] if name is None else name
         user_id = self.gi.users.get_current_user()["id"]
@@ -495,19 +486,16 @@ class GalaxyTest:
     def _wait_for_state(
         self, check_function, timeout: int, interval: int, error_msg: str
     ):
-        """
-        Waits for a specific state to be reached by periodically checking the provided function.
+        """Waits for a specific state to be reached by periodically checking.
 
-        :param check_function: A function that returns a boolean to indicate its state.
-        :type check_function: callable
-        :param timeout: The maximum time to wait for the state to be reached.
-        :type timeout: int
-        :param interval: The time to wait between state checks.
-        :type interval: int
-        :param error_msg: The message to log if the timeout is exceeded.
-        :type error_msg: str
-        :return: True if the desired state was reached, otherwise False.
-        :rtype: bool
+        Args:
+            check_function (callable): Function that returns a boolean indicating state
+            timeout (int): Maximum time to wait (in seconds)
+            interval (int): Time between checks (in seconds)
+            error_msg (str): Message to log if timeout is exceeded
+
+        Returns:
+            bool: True if state was reached, False if timeout occurred
         """
         start_time = datetime.now()
         while True:

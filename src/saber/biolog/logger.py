@@ -10,37 +10,68 @@ from platformdirs import user_log_dir
 
 # Filters, from logging docs:
 class ContextFilter(logging.Filter):
-    """
-    This is a filter which injects contextual dynbamic information into the log.
+    """A filter that injects contextual dynamic information into log records.
 
-    In this case we are going to inject the values of a global variable that
-    is updated as the test proceeds
+    This filter adds Galaxy instance and Pulsar endpoint information to each
+    log record, allowing for better tracking of log messages across different
+    contexts during test execution.
+
+    Attributes:
+        context (dict): Dictionary containing contextual information to inject
+            into log records.
     """
 
     def __init__(self, context: dict):
+        """Initialize the ContextFilter with a context dictionary.
+
+        Args:
+            context (dict): Dictionary containing contextual information.
+                Expected keys are 'GalaxyInstance' and 'Endpoint'.
+        """
         super().__init__()  # Initialize the parent class!
         self.context = context
 
     def filter(self, record):
+        """Filter and modify log records by adding contextual information.
+
+        This method is called for each log record and adds galaxy and pulsar
+        attributes to the record based on the current context.
+
+        Args:
+            record (logging.LogRecord): The log record to be filtered.
+
+        Returns:
+            bool: Always returns True to allow all records to pass through.
+        """
         record.galaxy = self.context.get("GalaxyInstance", "None")
         record.pulsar = self.context.get("Endpoint", "Default")
         return True
 
 
 class CustomLogger:
-    """
-    Custom Logger
+    """A custom logger implementation with contextual information and file rotation.
 
-    :type init_log_name: str
-    :param init_log_name: logger's name.
+    This logger provides enhanced logging capabilities including:
+    - Contextual information injection (Galaxy instance and endpoint)
+    - File rotation (daily rotation with 7-day backup retention)
+    - Syslog integration
+    - BioBlend logger integration
+    - Platform-specific log directory handling
+
+    Attributes:
+        _log_context (dict): Current logging context containing Galaxy instance
+            and endpoint information.
+        _log_name (str): Name of the logger instance.
+        _logger (logging.Logger): The underlying Python logger instance.
     """
 
     def __init__(self, init_log_name: str, dir: Path = None):
-        """
-        Custom Logger
+        """Initialize the CustomLogger with specified name and optional directory.
 
-        :type init_log_name: str
-        :param init_log_name: logger's name.
+        Args:
+            init_log_name (str): The name to assign to this logger instance.
+            dir (Path, optional): Custom directory path for log files. If None,
+                uses platform-specific default directories. Defaults to None.
         """
         self._log_context = {"GalaxyInstance": "None", "Endpoint": "None"}
         self._log_name = init_log_name
@@ -50,11 +81,22 @@ class CustomLogger:
         self._setup_logging(dir)
 
     def _setup_logging(self, log_dir: Path = None):
-        """
-        Set up logging with customs formatter, handlers and syslog.
-        Log are set up with file rotation: every midnight if file is older than 7 day
-        or heavier than 10MB
-        Default log paths depends on user.
+        """Set up logging with custom formatter, handlers, and syslog.
+
+        Configures the logger with:
+        - Timed rotating file handler (daily rotation, 7-day retention)
+        - Custom formatter with contextual information
+        - Syslog handler for system-level logging
+        - BioBlend logger integration
+
+        Log file locations:
+        - Root user: /var/log/saber/
+        - Regular user: Platform-specific user log directory
+        - Custom: Provided log_dir parameter
+
+        Args:
+            log_dir (Path, optional): Custom directory for log files. If provided,
+                the directory will be created if it doesn't exist. Defaults to None.
         """
         log_name = f"{self._log_name}.log"
         try:
@@ -119,8 +161,18 @@ class CustomLogger:
         bioblend_logger.propagate = False
 
     def _setup_syslog(self):
-        """
-        Set up syslog handler
+        """Set up syslog handler for system-level logging.
+
+        Configures platform-specific syslog integration:
+        - Linux: Uses /dev/log socket
+        - macOS: Uses /var/run/syslog socket
+
+        The syslog handler uses LOG_USER facility and includes process ID
+        in the log format for better system integration.
+
+        Note:
+            If syslog setup fails, a warning is printed but logging continues
+            with file-based logging only.
         """
         try:
             if platform.system() == "Linux":
@@ -144,13 +196,18 @@ class CustomLogger:
     def update_log_context(
         self, instance_name: str = "None", endpoint: str = "Default"
     ):
-        """
-        Updates the logging context with the specified instance name and endpoint.
+        """Update the logging context with Galaxy instance and endpoint information.
 
-        :param instance_name: The name of the Galaxy instance to be logged. Defaults to "None".
-        :type instance_name: str, optional
-        :param endpoint: The endpoint associated with the Galaxy instance. Defaults to "Default".
-        :type endpoint: str, optional
+        This method updates the contextual information that gets injected into
+        all subsequent log messages. The context includes the Galaxy instance
+        name and associated endpoint, which helps track log messages across
+        different test environments.
+
+        Args:
+            instance_name (str, optional): Name of the Galaxy instance being
+                used for logging context. Defaults to "None".
+            endpoint (str, optional): Endpoint associated with the Galaxy
+                instance at that moment (e.g., Pulsar endpoint). Defaults to "Default".
         """
         # Update context dict
         self._log_context["GalaxyInstance"] = instance_name or "None"
@@ -161,19 +218,53 @@ class CustomLogger:
         self._logger.addFilter(ContextFilter(self._log_context))
 
     # __getattr__ didn't cut it
-    # Only the common method are delegated
 
     def debug(self, msg, *args, **kwargs):
+        """Log a debug message.
+
+        Args:
+            msg: The message to log.
+            *args: Positional arguments for message formatting.
+            **kwargs: Keyword arguments passed to the underlying logger.
+        """
         self._logger.debug(msg, *args, **kwargs)
 
     def info(self, msg, *args, **kwargs):
+        """Log an info message.
+
+        Args:
+            msg: The message to log.
+            *args: Positional arguments for message formatting.
+            **kwargs: Keyword arguments passed to the underlying logger.
+        """
         self._logger.info(msg, *args, **kwargs)
 
     def warning(self, msg, *args, **kwargs):
+        """Log a warning message.
+
+        Args:
+            msg: The message to log.
+            *args: Positional arguments for message formatting.
+            **kwargs: Keyword arguments passed to the underlying logger.
+        """
         self._logger.warning(msg, *args, **kwargs)
 
     def error(self, msg, *args, **kwargs):
+        """Log an error message.
+
+        Args:
+            msg: The message to log.
+            *args: Positional arguments for message formatting.
+            **kwargs: Keyword arguments passed to the underlying logger.
+        """
         self._logger.error(msg, *args, **kwargs)
 
     def critical(self, msg, *args, **kwargs):
+        """Log a critical message.
+
+        Args:
+            msg: The message to log.
+            *args: Positional arguments for message formatting.
+            **kwargs: Keyword arguments passed to the underlying logger.
+        """
         self._logger.critical(msg, *args, **kwargs)
