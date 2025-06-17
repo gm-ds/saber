@@ -1,12 +1,100 @@
 #!/usr/bin/env python3
 
+"""Workflow testing launcher for Galaxy instances."""
+
 from typing import Union
 
 from saber.biolog import LoggerLike
 
 
 def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
+    """Launch and monitor workflow tests across multiple Galaxy instances and compute endpoints.
 
+        This function:
+        1. Iterates through configured Galaxy instances
+        2. Sets up test workflows for each instance
+        3. Executes tests across all specified compute endpoints
+        4. Monitors job execution and collects results
+        5. Handles cleanup and error conditions
+
+        Args:
+            config: Dictionary containing test configuration with:
+                - usegalaxy_instances: List of Galaxy instance configurations
+                - endpoints: List of compute endpoints to test
+                - Other parameters
+            Logger: Logger instance for output and error reporting
+
+        Returns:
+            Union[int, list]: Returns one of:
+                - [0, results] on complete success
+                - [error_code, partial_results] on partial success/failure
+                - 0 on keyboard interrupt (clean exit)
+            Where error_code can be:
+                - PATH_EXIT: System exit occurred
+                - GAL_ERROR: Galaxy API error occurred
+                - TIMEOUT_EXIT: Jobs/SABER timed out
+                - JOB_ERR_EXIT: Jobs failed
+            And results is a nested dictionary structure containing:
+                {
+        "instance_1": {
+            "compute_1": {
+                "SUCCESSFUL_JOBS": {
+                    "job_id_1": {
+                        "INFO": {
+                            "tool_id": "tool_namespace/tool_name/tool_version",
+                            "state": "ok",
+                            "inputs": {
+                                "input_name": {"id": "dataset_id", "src": "hda", "uuid": "dataset_uuid"}
+                            },
+                            "outputs": {
+                                "output_name": {"id": "dataset_id", "src": "hda", "uuid": "dataset_uuid"}
+                            }
+                        },
+                        "METRICS": [
+                            {
+                                "title": "Metric Name",
+                                "value": "Metric Value",
+                                "plugin": "source"
+                            }
+                        ]
+                    }
+                },
+                "FAILED_JOBS": {
+                    "job_id_2": {
+                        "INFO": {
+                            "tool_id": "tool_namespace/tool_name/tool_version",
+                            "state": "error",
+                            "exit_code": 1
+                        },
+                        "PROBLEMS": {
+                            "has_empty_inputs": false,
+                            "has_duplicate_inputs": false
+                        }
+                    }
+                },
+                "QUEUED_JOBS": {
+                    "job_id_3": {
+                        "INFO": {
+                            "tool_id": "tool_namespace/tool_name/tool_version",
+                            "state": "queued"
+                        }
+                    }
+                }
+            },
+            "compute_2": {
+                # Similar structure as compute_1
+            }
+        },
+        "instance_2": {
+            # Similar structure as instance_1
+        }
+    }
+
+        Raises:
+            SystemExit: If critical error occurs during execution
+            KeyboardInterrupt: If user interrupts execution
+            Exception: For other unexpected errors during execution
+    """
     from saber._internal.utils.globals import (
         GAL_ERROR,
         JOB_ERR_EXIT,
@@ -65,7 +153,7 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
             Logger.info("Test completed")
 
         except SystemExit as e:
-            Logger.error(f"Program exiting with code: {e}")
+            Logger.error(f"Workflow PAth error: {e}")
             if i == len(config["usegalaxy_instances"]) - 1:
                 Logger.warning("Exiting with error")
                 return [PATH_EXIT, results]

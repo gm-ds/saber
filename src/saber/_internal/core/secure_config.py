@@ -16,26 +16,23 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 class SecureConfig:
-    """
-    A class for securely handling configuration files for a specific tool.
+    """A class for securely handling configuration files for a specific tool.
 
     The class manages configuration paths and provides encryption and decryption for sensitive configuration YAMLs.
 
-    :param tool_name: The name of the tool.
-    :type tool_name: str
-    :param config_path: An optional path to the configuration file. If not provided, the default config path will be used.
-    :type config_path: Path, optional
+    Args:
+        tool_name (str): The name of the tool.
+        config_path (Path, optional): An optional path to the configuration file. If not provided, the default config path will be used.
     """
 
     def __init__(self, tool_name: str, config_path: Path = None):
-        """
-        Initializes the SecureConfig object with a tool name and configuration path.
+        """Initializes the SecureConfig object with a tool name and configuration path.
+
         If no configuration path is provided, the default configuration path will be used.
 
-        :param tool_name: The name of the tool.
-        :type tool_name: str
-        :param config_path: An optional path to the configuration file. If not provided, the default config path will be used.
-        :type config_path: Path, optional
+        Args:
+            tool_name (str): The name of the tool.
+            config_path (Path, optional): An optional path to the configuration file. If not provided, the default config path will be used.
         """
         self.tool_name = tool_name
         self.b_tool_name = tool_name.encode("utf-8")
@@ -49,10 +46,10 @@ class SecureConfig:
         self._fernet: Optional[Fernet] = None
 
     def _get_default_config_path(self) -> Path:
-        """
-        Default configuration path.
-        :return: Path to the configuration file
-        :rtype: Path
+        """Default configuration path.
+
+        Returns:
+            Path: Path to the configuration file.
         """
         if os.name == "nt":  # Windows
             base_path = Path(os.environ.get("APPDATA", Path.home()))
@@ -82,20 +79,27 @@ class SecureConfig:
         )
 
     def get_config_path(self) -> Path:
-        """
-        Return stored configuration path.
-        :return: Path to the configuration file
-        :rtype: Path
+        """Return stored configuration path.
+
+        Returns:
+            Path: Path to the configuration file.
         """
         return self.config_path
 
     def _derive_key(self, password: str) -> bytes:
-        """
-        Key Derivation from passoword using PBKDF2HMAC and SHA256.
-        Currently the salt is static.
+        """Derive an encryption key from a password using PBKDF2HMAC with SHA256.
 
-        :type password: str
-        :param password: String for key derivation.
+        Uses a static salt value for key derivation.
+
+        Args:
+            password (str): The password string to derive the key from.
+
+        Returns:
+            bytes: The derived encryption key.
+
+        Note:
+            The static salt should be replaced with a properly generated random salt
+            to improve security.
         """
         static_salt = b"static_salt_value_777"  # TODO: Use seasoning properly
 
@@ -106,18 +110,22 @@ class SecureConfig:
         return key
 
     def _set_secure_permissions(self):
-        """
-        Set secure permitions on configuration file, mode 600 un unix systems.
+        """Set secure file permissions on the configuration file.
+
+        On Unix-like systems, sets the file permissions to 600 (user read/write only).
+        On Windows systems... well...
         """
         if os.name == "posix":
             os.chmod(self.config_path, stat.S_IRUSR | stat.S_IWUSR)  # 600 permissions
 
     def encrypt_data(self, data: bytes) -> bytes:
-        """
-        Data encryption with Fernet.
+        """Data encryption with Fernet.
 
-        :type data: bytes
-        :param data: Data to encrypt
+        Args:
+            data (bytes): Data to encrypt.
+
+        Returns:
+            bytes: Encrypted data.
         """
         if not self._fernet:
             raise ValueError(
@@ -126,11 +134,13 @@ class SecureConfig:
         return self._add_newlines(self._fernet.encrypt(data))
 
     def decrypt_data(self, encrypted_data: bytes) -> bytes:
-        """
-        Data decryption with Fernet.
+        """Data decryption with Fernet.
 
-        :type data: bytes
-        :param data: Data to decrypt
+        Args:
+            encrypted_data (bytes): Data to decrypt.
+
+        Returns:
+            bytes: Decrypted data.
         """
         if not self._fernet:
             raise ValueError(
@@ -139,24 +149,22 @@ class SecureConfig:
         return self._fernet.decrypt(self._remove_newlines(encrypted_data))
 
     def initialize_encryption(self, password: str):
-        """
-        Fernet initialization with derived key.
+        """Fernet initialization with derived key.
 
-        :type password: str
-        :param password: String for key derivation.
+        Args:
+            password (str): String for key derivation.
         """
         key = self._derive_key(password)
         self._fernet = Fernet(key)
 
     def is_encrypted(self) -> bool:
-        """
-        Checks whether the configuration file is encrypted.
+        """Checks whether the configuration file is encrypted.
 
         The function check for the presence of a string at the beginning of the file.
         If present the function assumes that the file is encrypted by the same python tool.
 
-        :return: True if the configuration file is encrypted, otherwise False.
-        :rtype: bool
+        Returns:
+            bool: True if the configuration file is encrypted, otherwise False.
         """
         try:
             with open(self.config_path, "rb") as f:
@@ -171,13 +179,18 @@ class SecureConfig:
             return False
 
     def _write_file(self, data: bytes):
-        """
-        Write a file using a tempfile and atomically replace it in the configuration path.
-        If it fails it will use the same directory to create a temporary file and use rename,
-        for the atomic substitution.
+        """Safely write data to the configuration file using atomic operations.
 
-        :type data: bytes
-        :param data: Data to write on file
+        Uses a temporary file to ensure atomic writes and prevent corruption.
+        First attempts to use tempfile.NamedTemporaryFile, falling back to
+        a same-directory temporary file if that fails.
+
+        Args:
+            data (bytes): The binary data to write to the file.
+
+        Raises:
+            OSError: If file operations fail.
+            Exception: If any error occurs during file operations.
         """
         # Try using tempfile and replace, can fail in some cases
         try:
@@ -217,8 +230,13 @@ class SecureConfig:
                 raise e
 
     def encrypt_existing_file(self):
-        """
-        Encrypt an existing configuration YAML file. Validates YAML format before encryption
+        """Encrypt an existing configuration YAML file.
+
+        Validates YAML format before encryption.
+
+        Raises:
+            ValueError: If encryption not initialized or invalid YAML data.
+            FileNotFoundError: If configuration file not found.
         """
         if not self._fernet:
             raise ValueError(
@@ -252,8 +270,11 @@ class SecureConfig:
             return
 
     def decrypt_existing_file(self):
-        """
-        Decrypt an existing configuration YAML file.
+        """Decrypt an existing configuration YAML file.
+
+        Raises:
+            ValueError: If encryption not initialized.
+            FileNotFoundError: If configuration file not found.
         """
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file {self.config_path} not found")
@@ -281,11 +302,13 @@ class SecureConfig:
             return
 
     def _edit_save_config(self, config_data: any):
-        """
-        Save encrypted data to configuration file.
+        """Save encrypted data to configuration file.
 
-        :type config_data: any
-        :param config_data: Configuration data
+        Args:
+            config_data (any): Configuration data.
+
+        Raises:
+            ValueError: If encryption not initialized.
         """
         if not self._fernet:
             raise ValueError(
@@ -302,11 +325,13 @@ class SecureConfig:
         self._set_secure_permissions()
 
     def load_config(self) -> dict:
-        """
-        Load configuration from YAML file whether is encrypted or not.
+        """Load configuration from YAML file whether is encrypted or not.
 
-        :return: Configuration dictionary
-        :rtype: dict
+        Returns:
+            dict: Configuration dictionary.
+
+        Raises:
+            ValueError: If file does not exist, encryption not initialized, or cannot access configuration file.
         """
         if not self.config_path.exists():
             raise ValueError(
@@ -337,12 +362,13 @@ class SecureConfig:
             raise ValueError(f"Cannot access configuration file: {e}") from e
 
     def _edit_load_config(self) -> any:
-        """
-        Load configuration from YAML file whether is encrypted or not as simple text,
-        for editing.
+        """Load configuration from YAML file whether is encrypted or not as simple text, for editing.
 
-        :return: Configuration stream
-        :rtype: any
+        Returns:
+            any: Configuration stream.
+
+        Raises:
+            ValueError: If file does not exist, encryption not initialized, or cannot access configuration file.
         """
         if not self.config_path.exists():
             raise ValueError(
@@ -373,11 +399,10 @@ class SecureConfig:
             raise ValueError(f"Cannot access configuration file: {e}") from e
 
     def _get_editor_command(self) -> str:
-        """
-        Try to get editor from environment, fallbacks on nano.
+        """Try to get editor from environment, fallbacks on nano.
 
-        :return: Editor command name
-        :rtype: str
+        Returns:
+            str: Editor command name.
         """
         if os.name == "nt":  # Windows, why do I bother??
             editor = os.environ.get("VISUAL")
@@ -428,9 +453,12 @@ class SecureConfig:
         return editor
 
     def edit_config(self):
-        """
-        Open the editor with the decrypted file for editing.
+        """Open the editor with the decrypted file for editing.
+
         Uses tempfile to store modification before saving it to the configuration YAML file.
+
+        Raises:
+            ValueError: If invalid YAML after editing.
         """
         current_config = self._edit_load_config()
 
@@ -471,6 +499,17 @@ class SecureConfig:
                     pass
 
     def _add_newlines(self, data: bytes) -> bytes:
+        """Format encrypted data by adding newlines for better readability.
+
+        Splits the encrypted data into lines of 80 characters each to make
+        the encrypted file more pleasing when viewed in a text editor.
+
+        Args:
+            data: The encrypted binary data to format
+
+        Returns:
+            bytes: The formatted data with newlines inserted every 80 characters
+        """
         string = data.decode("utf-8")
 
         # Insert a newline every 80 characters
@@ -480,6 +519,17 @@ class SecureConfig:
         return byte_string
 
     def _remove_newlines(self, data: bytes) -> bytes:
+        """Remove formatting newlines from encrypted data before decryption.
+
+        Reverses the effect of _add_newlines() by removing all newline characters
+        before attempting to decrypt the data.
+
+        Args:
+            data: The formatted encrypted data with newlines
+
+        Returns:
+            bytes: The original encrypted data without newlines
+        """
         string = data.decode("utf-8")
         # Remove all newline characters
         stripped_string = string.replace("\n", "")
