@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
 
+"""Example configuration template for SABER.
+
+This module contains a template YAML configuration that demonstrates how to
+set up Galaxy instances, API keys, data inputs, and various timeout settings.
+
+The configuration template includes:
+    - Galaxy instance settings with API authentication
+    - Endpoint definitions for workflow execution
+    - Data input specifications with URLs and file types
+    - Timeout and polling interval configurations
+
+Attributes:
+    _example (str): A multi-line YAML string containing the complete
+        configuration template with placeholder values and comments
+        explaining each section.
+
+"""
+
 _example = """---
 usegalaxy_instances:
   - name: Main
