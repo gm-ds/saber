@@ -43,7 +43,12 @@ line-length = 88
 target-version = "py310"
 
 [tool.ruff.lint]
-extend-select = ["D"]
+extend-select = [
+    "D",
+    "ANN",
+    "TCH",
+]
+
 ignore = [
     "D100",
     "D104",
