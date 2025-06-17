@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Command-line argument parser for the Saber tool.
+
+This module provides a Parser class that handles command-line arguments for testing
+multiple useGalaxy instances and Pulsar Endpoints. It includes support for encrypted
+configuration files, various output formats, and validation.
+"""
 
 import argparse
 import os
@@ -17,17 +24,74 @@ MD_DEFAULT = Path.home().joinpath(
 
 
 class Parser:
+    """
+    Command-line argument parser for the Saber testing tool.
+
+    This class handles parsing and validation of command-line arguments. It supports
+    YAML configuration files, multiple output formats, and comprehensive
+    path validation.
+
+    Attributes:
+        place_holder (str): Placeholder value for unset passwords.
+        parser (argparse.ArgumentParser): The main argument parser instance.
+        editable (dict): Dictionary containing parsed and processed arguments.
+        group (argparse._MutuallyExclusiveGroup): Mutually exclusive argument group.
+
+    Args:
+        place_holder (str): Placeholder string used for default password value.
+        mock_conf_path (str): Default path for configuration file.
+
+    Example:
+        >>> parser = Parser("default_placeholder", "/path/to/config.yml")
+        >>> args = parser.arguments()
+    """
+
     def __init__(self, place_holder: str, mock_conf_path: str):
+        """
+        Initialize the Parser with default values and configure all arguments.
+
+        Sets up the argument parser with all available options, processes the
+        arguments, and performs validation checks.
+
+        Args:
+            place_holder (str): Default placeholder value for password field.
+            mock_conf_path (str): Default path to the configuration YAML file.
+        """
         self.place_holder = place_holder
         self.parser = argparse.ArgumentParser(
             description="Tool to test multiple useGalaxy instances and Pulsar Endpoints"
         )
+
+        # Configure all command-line arguments
+        self._setup_arguments(mock_conf_path)
+
+        # Parse and process arguments
+        args = self.parser.parse_args()
+        self.editable = vars(args)
+
+        # Perform validation and processing
+        self._set_password()
+        self._check_password_type()
+        self._custom_args_validation()
+        self.val_safety_check()
+        self._output_check()
+
+    def _setup_arguments(self, mock_conf_path: str) -> None:
+        """
+        Configure all command-line arguments for the parser.
+
+        Sets up individual arguments and mutually exclusive groups for the
+        argument parser instance.
+
+        Args:
+            mock_conf_path (str): Default configuration file path for help text.
+        """
         self.parser.add_argument(
             "-p",
             "--password",
             default=self.place_holder,
-            help="Password to decrypt and encrypt the settings YAML file.\
-                            \nAccepts txt files and strings",
+            help="Password to decrypt and encrypt the settings YAML file. "
+            "Accepts txt files and strings",
         )
         self.parser.add_argument(
             "-j",
@@ -42,8 +106,8 @@ class Parser:
             type=Path,
             nargs="?",
             const=HTML_DEFAULT,
-            help="Enables HTML report, it accepts a path for the output:/path/report.html\
-                                                            \nDefaults to '~/saber_report_YYYY-MM-DD_HH-MM-SS.html' otherwise.",
+            help="Enables HTML report, it accepts a path for the output:/path/report.html "
+            "Defaults to '~/saber_report_YYYY-MM-DD_HH-MM-SS.html' otherwise.",
         )
         self.parser.add_argument(
             "-m",
@@ -52,8 +116,8 @@ class Parser:
             type=Path,
             nargs="?",
             const=MD_DEFAULT,
-            help="Enables Markdown report, it accepts a path for the output:/path/report.md\
-                                                            \nDefaults to '~/saber_report_YYYY-MM-DD_HH-MM-SS.md' otherwise.",
+            help="Enables Markdown report, it accepts a path for the output:/path/report.md "
+            "Defaults to '~/saber_report_YYYY-MM-DD_HH-MM-SS.md' otherwise.",
         )
         self.parser.add_argument(
             "-t",
@@ -62,25 +126,29 @@ class Parser:
             type=Path,
             nargs="?",
             const=TABLE_DEFAULT,
-            help="Enables HTML summary report, it accepts a path for the output:/path/report.html\
-                                                            \nDefaults to '~/saber_summary_YYYY-MM-DD_HH-MM-SS.html' otherwise.",
+            help="Enables HTML summary report, it accepts a path for the output:/path/report.html "
+            "Defaults to '~/saber_summary_YYYY-MM-DD_HH-MM-SS.html' otherwise.",
         )
         self.parser.add_argument(
             "-l",
             "--log_dir",
             metavar="LOG DIRECTORY",
             type=Path,
-            help='Custom log DIRECTORY. Defaults depends on the platform. \nMacOS: "/Users/<your-user>/Library/Logs/<tool-name>"\
-                                    \n Windows: "C:\\Users\\<your-user>\\<tool-name>\\Local\\Acme\\<tool-name>\\Logs" \nLinux: "/home/<your-user>/.local/state/<tool-name>/log"',
+            help="Custom log DIRECTORY. Defaults depends on the platform. "
+            'MacOS: "/Users/<your-user>/Library/Logs/<tool-name>" '
+            'Windows: "C:\\Users\\<your-user>\\<tool-name>\\Local\\Acme\\<tool-name>\\Logs" '
+            'Linux: "/home/<your-user>/.local/state/<tool-name>/log"',
         )
+
+        # Mutually exclusive group for file operations
         self.group = self.parser.add_mutually_exclusive_group()
         self.group.add_argument(
             "-e",
             "--edit",
             metavar="PATH",
             type=Path,
-            help="Open the default editor to edit the existing encrypted YAML file,\
-                                                            \nalways encrypt the file after editing. Defaults to nano.",
+            help="Open the default editor to edit the existing encrypted YAML file, "
+            "always encrypt the file after editing. Defaults to nano.",
         )
         self.group.add_argument(
             "-c", "--encrypt", metavar="PATH", type=Path, help="Encrypt a YAML file."
@@ -102,28 +170,35 @@ class Parser:
             help="Prints an example configuration, all other arguments are ignored",
         )
 
-        args = self.parser.parse_args()
-        self.editable = vars(args)
-        self._set_password()
-        self._check_password_type()
-        self._custom_args_validation()
-        self.val_safety_check()
-        self._output_check()
-
     def arguments(self) -> argparse.Namespace:
         """
-        Return argparse Namespace.
+        Return the processed arguments as an argparse Namespace object.
+
+        Returns:
+            argparse.Namespace: Namespace object containing all processed command-line arguments.
+
+        Example:
+            >>> parser = Parser("placeholder", "/config/path")
+            >>> args = parser.arguments()
+            >>> print(f"HTML report path: {args.html_report}")
         """
         return argparse.Namespace(**self.editable)
 
     def _custom_args_validation(self) -> None:
         """
-        Validates arguments and ensures dependencies.
+        Validate custom argument combinations and dependencies.
 
-        If the `example_settings` argument is set, it replaces the `editable`
-        dictionary with its contents, overriding all other arguemnts.
+        Ensures that operations requiring passwords (edit, encrypt, decrypt) have
+        a password provided. If example_settings is requested, all other arguments
+        are cleared except for the example_settings flag.
 
-        :raises argparse.ArgumentError: If a required password argument is missing when needed.
+        Raises:
+            argparse.ArgumentError: If a required password argument is missing when
+                                  performing operations that require encryption/decryption.
+
+        Note:
+            When example_settings is True, all other arguments are reset to None
+            to prevent conflicts during example generation.
         """
         for a in [
             self.editable["edit"],
@@ -140,7 +215,18 @@ class Parser:
 
     def _set_password(self) -> None:
         """
-        Set password from environ if SABER_PASSWORD is defined when password is not set through argsparse.
+        Set password from environment variable if available.
+
+        Checks for the SABER_PASSWORD environment variable and uses it as the
+        password if no password was provided via command line arguments.
+        Strips whitespace from the environment variable value.
+
+        Environment Variables:
+            SABER_PASSWORD: Password value to use for encryption/decryption operations.
+
+        Note:
+            Environment variable takes precedence only when no password is explicitly
+            provided via command-line arguments.
         """
         temp_pswd = os.getenv("SABER_PASSWORD")
         if self.editable["password"] == self.place_holder and temp_pswd is not None:
@@ -149,7 +235,15 @@ class Parser:
 
     def _check_password_type(self) -> None:
         """
-        If password given is a path to a file, its content are used.
+        Process password argument to handle file-based passwords.
+
+        If the password argument points to a file path, reads the file content
+        and uses it as the password.
+
+        Note:
+            If the password argument is a valid file path, the entire file content
+            is read and used as the password. The file should contain only the
+            password without additional formatting.
         """
         if self.editable["password"] is not None:
             if self.editable["password"] != self.place_holder:
@@ -163,7 +257,22 @@ class Parser:
         self, output_list: list = ["html_report", "table_html_report", "md_report"]
     ):
         """
-        Check validity of the path given for the HTML or MD output.
+        Validate output file paths for HTML and Markdown reports.
+
+        Checks that output paths have valid extensions (.html or .md) and that
+        the parent directories exist.
+
+        Args:
+            output_list (list, optional): List of output argument keys to validate.
+                                        Defaults to ["html_report", "table_html_report", "md_report"].
+
+        Raises:
+            argparse.ArgumentError: If any output path is invalid (wrong extension
+                                  or parent directory doesn't exist).
+
+        Note:
+            Valid extensions are .html for HTML reports and .md for Markdown reports.
+            Parent directories must exist before the tool runs.
         """
         for key in output_list:
             if self.editable[key] != None:
@@ -180,7 +289,12 @@ class Parser:
 
     def val_safety_check(self):
         """
-        Wrapper to pass value, key tuples.
+        Validates YAML file paths and resolves the log directory path. Skips
+        validation if example_settings is requested.
+
+        Note:
+            This method coordinates validation of different argument types and
+            ensures all file paths are properly resolved and validated.
         """
         if self.editable["example_settings"]:
             pass
@@ -196,11 +310,23 @@ class Parser:
 
     def _safety_check(self, args_path: list) -> None:
         """
-        Checks the type of a given file.
-        Non YAML files fail the check.
+        Validate YAML file paths and extensions.
 
-        :param args_path: The YAML file path to check.
-        :type args_path: Path
+        Ensures that file arguments point to valid YAML files with correct
+        extensions (.yaml or .yml) and that the files exist.
+
+        Args:
+            args_path (list): List of tuples containing (path, key) pairs to validate.
+                            Each tuple contains a Path object and its corresponding
+                            argument key name.
+
+        Raises:
+            argparse.ArgumentError: If any path doesn't point to a valid YAML file
+                                  or if the file doesn't exist.
+
+        Note:
+            Only validates paths that are not None. Accepted extensions are
+            .yaml and .yml (case-sensitive).
         """
         for p in args_path:
             if isinstance(p[0], Path) and p[0] is not None:
@@ -212,12 +338,25 @@ class Parser:
 
     def _path_resolver(self, value, key: str) -> Path:
         """
-        Resolves a given file path to an absolute path.
+        Resolve file paths to absolute paths with user directory expansion.
 
-        :param path: The file path to resolve.
-        :type path: Path
-        :return: The resolved absolute file path.
-        :rtype: Path
+        Converts relative paths to absolute paths, expands user directory
+        shortcuts (~), and updates the internal argument dictionary.
+
+        Args:
+            value: The path value to resolve (can be Path, str, or None).
+            key (str): The argument key name for updating the internal dictionary.
+
+        Returns:
+            Path: Resolved absolute path, or None if input value is None.
+                 When key matches known argument names, returns None as the
+                 path is stored in the internal dictionary.
+
+        Note:
+            For known argument keys (edit, encrypt, decrypt, settings, html_report,
+            table_html_report, md_report, log_dir), the resolved path is stored
+            in the internal editable dictionary and None is returned.
+            For other keys, the resolved Path object is returned directly.
         """
         if value is not None:
             if not isinstance(value, Path):
