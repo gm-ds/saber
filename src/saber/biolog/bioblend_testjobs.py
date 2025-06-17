@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-
+import re
 import json
 import time
 from datetime import datetime, timedelta
@@ -11,6 +11,7 @@ from bioblend.galaxy import GalaxyInstance, datasets
 from bioblend.galaxy.histories import HistoryClient
 
 from saber.biolog.loglike import LoggerLike
+from saber.biolog.logger import CustomLogger
 
 
 class GalaxyTest:
@@ -43,10 +44,10 @@ class GalaxyTest:
             if ((email is not None) and (gpassword is not None))
             else GalaxyInstance(url, key)
         )
-        self.logger.update_log_context()
+        self._update_log_context()
         self.logger.info("useGalaxy connection initialized")
         self.p_endpoint = ""
-        self.err_hist = {}
+        self.err_tracker = False
 
         # Default configuration
         default_config = {
@@ -55,12 +56,37 @@ class GalaxyTest:
             "interval": 5,
             "timeout": 12000,
             "history_name": "SABER",
+            "clean_history": "onsuccess",
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
+        self.current_date = datetime.now().strftime("%-d/%-m/%y %H:%M")
+        self.config["history_name"] = (
+            f"{self.config.get('history_name', 'SABER')} {self.current_date}"
+        )
         self.history_client = HistoryClient(self.gi)
         self.history = None
         self.wf = None
+
+    def _update_log_context(
+        self, instance_name: str = "None", endpoint: str = "Default"
+    ):
+        """Update the logging context with Galaxy instance and endpoint information.
+
+        This method updates the contextual information that gets injected into
+        all subsequent log messages if the logger is an instance of Custom Logger.
+        The context includes the Galaxy instance
+        name and associated endpoint, which helps track log messages across
+        different test environments.
+
+        Args:
+            instance_name (str, optional): Name of the Galaxy instance being
+                used for logging context. Defaults to "None".
+            endpoint (str, optional): Endpoint associated with the Galaxy
+                instance at that moment (e.g., Pulsar endpoint). Defaults to "Default".
+        """
+        if isinstance(self.logger, CustomLogger):
+            self.logger.update_log_context(instance_name, endpoint)
 
     def test_job_set_up(
         self,
@@ -164,8 +190,7 @@ class GalaxyTest:
             history_name (str, optional): Defaults to "Pulsar Endpoints Test"
         """
         if history_name is None:
-            history_name = self.config.get("history_name", "Pulsar Endpoints Test")
-
+            history_name = self.config.get("history_name", f"SABER {self.current_date}")
         # Delete older histories to ensure there's enough free space
         self.purge_histories()
 
@@ -188,6 +213,20 @@ class GalaxyTest:
                 return
             raise
 
+    @staticmethod
+    def _clean_string(s: str) -> str:
+        """Clean a string by removing numbers and slashes, and converting to lowercase.
+
+        Args:
+            s (str): Input string to clean
+
+        Returns:
+            str: Cleaned string with numbers/slashes removed and in lowercase
+        """
+        s = re.sub(r"[0-9/:]", "", s)
+        s = s.lower()
+        return s.strip()
+
     def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
         """Purge histories with the same names used during tests or older than 1 week.
 
@@ -197,7 +236,7 @@ class GalaxyTest:
         """
         if self.history_client is not None:
             for history in self.history_client.get_histories():
-                if history["name"] == self.config.get("history_name") and purge_new:
+                if self.config.get("history_name") == history["name"] and purge_new:
                     self.logger.info(
                         f'Purging History, ID: {history["id"]}, Name: {history["name"]}'
                     )
@@ -211,54 +250,24 @@ class GalaxyTest:
                         create_time["create_time"], "%Y-%m-%dT%H:%M:%S.%f"
                     )
                 ) > timedelta(
-                    hours=20
-                ) and purge_old:  # TODO: Make it customizable through YAML config
-                    config_clean = self.config.get("history_name").lower()
-                    history_clean = history.get("name").strip().lower()
-                    check = False
+                    hours=36
+                ) and purge_old:  # TODO: add retention time to yaml config
+                    config_clean = self._clean_string(self.config.get("history_name"))
+                    history_clean = self._clean_string(history.get("name"))
                     if config_clean in history_clean:
-                        check = True
-                    history_words = history_clean.split()
-                    for word in history_words:
-                        if config_clean == word:
-                            check = True
-                            break
-                    if check:
                         self.logger.info(
                             f'Purging History, ID: {history["id"]}, Name: {history["name"]}'
                         )
                         self._safe_delete_history(history["id"], purge_bool=True)
-
-    def _update_history_name(self, job_id, msg: str = "ERR") -> None:
-        """Make a new history to store failed jobs.
-
-        Args:
-            job_id: ID of the failed job
-            msg (str, optional): Small message added to history name. Defaults to "ERR"
-        """
-        current_date = datetime.now().strftime("%-d/%-m/%y")
-        message = (
-            f"{msg} {self.p_endpoint} {current_date} {self.config.get('history_name')}"
-        )
-        if msg not in self.err_hist:
-            self.err_hist[msg] = {}
-
-        if self.p_endpoint not in self.err_hist[msg]:
-            self.err_hist[msg][self.p_endpoint] = self.history_client.create_history(
-                name=message
-            )
-
-        show = self.history_client.show_history(self.history["id"], contents=False)
-        datasets_id = show["state_ids"]
-        datasets_id.pop("ok", None)
-        for state, id_list in datasets_id.items():
-            for id in id_list:
-                dataset = self.gi.datasets.show_dataset(id)
-                if dataset["creating_job"] == job_id:
-                    self.history_client.copy_content(
-                        self.err_hist[msg][self.p_endpoint]["id"], id
-                    )
-        self.logger.info(f"Unsuccessful jobs copied to: {message}")
+                        return
+                    history_words = history_clean.split()
+                    for word in history_words:
+                        if config_clean == word:
+                            self.logger.info(
+                                f'Purging History, ID: {history["id"]}, Name: {history["name"]}'
+                            )
+                            self._safe_delete_history(history["id"], purge_bool=True)
+                            return
 
     def _upload_workflow(self, wf_path: str = None) -> None:
         """Upload Workflow file to usegalaxy.*
@@ -267,12 +276,12 @@ class GalaxyTest:
             wf_path (str, optional): Path to the workflow file. Defaults to config value.
 
         Raises:
-            SystemExit: If no workflow path is provided or path doesn't exist
+            WFPathError: If no workflow path is provided or path doesn't exist
         """
         wf_path = self.config.get("ga_path", None) if wf_path is None else wf_path
         if wf_path is None:
-            self.logger.error("No workflow path provided in config or arguments.")
-            raise SystemExit(1)
+            error_msg = "No workflow path provided in config file."
+            raise WFPathError(error_msg)
 
         wf_path = Path(wf_path).expanduser()
 
@@ -298,8 +307,8 @@ class GalaxyTest:
             self.logger.info(f"Uploading Workflow, local path: {wf_path}")
             self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
         else:
-            self.logger.error(f"Workflow path does not exist: {wf_path}")
-            raise SystemExit(1)
+            error_msg = f"Workflow path does not exist: {wf_path}"
+            raise WFPathError(error_msg)
 
     def purge_workflow(self) -> None:
         """Delete permanently the workflow uploaded for the test."""
@@ -307,7 +316,8 @@ class GalaxyTest:
             self.gi.workflows.delete_workflow(self.wf["id"])
             self.logger.info(f'Purging Workflow, ID: {self.wf["id"]}')
 
-    def _tool_id_split(self, tool_id: str) -> str:
+    @staticmethod
+    def _tool_id_split(tool_id: str) -> str:
         """Remove characters before "/devteam" inclusively to avoid log clutter.
 
         Args:
@@ -373,56 +383,92 @@ class GalaxyTest:
         Returns:
             dict: Dictionary containing successful, timeout and failed jobs with their details
         """
-        timeout_jobs = {}
+        running_jobs = {}
+        queued_jobs = {}
+        new_jobs = {}
+        waiting_jobs = {}
         successful_jobs = {}
         failed_jobs = {}
         for job in jobs:
+            if job:
+                if job["state"] in ["new", "queued", "running", "waiting"]:
+                    self.logger.info(f'Job {job["id"]} reached tool timeout:')
+                    self.logger.info(
+                        f'         Tool: {self._tool_id_split(job["tool_id"])} Status: {job["state"]}'
+                    )
+                    self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
+                    self.err_tracker = True
+                    if job["state"] == "running":
+                        running_jobs[job["id"]] = {
+                            "INFO": self.gi.jobs.show_job(job["id"]),
+                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                        }
+                    if job["state"] == "new":
+                        new_jobs[job["id"]] = {
+                            "INFO": self.gi.jobs.show_job(job["id"]),
+                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                        }
+                    if job["state"] == "queued":
+                        queued_jobs[job["id"]] = {
+                            "INFO": self.gi.jobs.show_job(job["id"]),
+                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                        }
+                    if job["state"] == "waiting":
+                        waiting_jobs[job["id"]] = {
+                            "INFO": self.gi.jobs.show_job(job["id"]),
+                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                        }
 
-            # Cancel job if it's still running
-            if job and job["state"] in ["new", "queued", "running"]:
-                self.logger.info(f'Job {job["id"]} failed due to timeout:')
-                self.logger.info(
-                    f'         Tool: {self._tool_id_split(job["tool_id"])}'
-                )
-                timeout_jobs[job["id"]] = {
-                    "INFO": self.gi.jobs.show_job(job["id"]),
-                    "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                    "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                }
-                self._update_history_name(job_id=job["id"], msg="TTO")
+                # Handle completion
+                elif job["exit_code"] == 0 or job["state"] == "ok":
+                    self.logger.info(f'Job {job["id"]} succeeded:')
+                    self.logger.info(
+                        f'         Tool: {self._tool_id_split(job["tool_id"])}'
+                    )
+                    successful_jobs[job["id"]] = {
+                        "INFO": self.gi.jobs.show_job(job["id"]),
+                        "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                    }
+                    if (
+                        self.config.get("clean_history", "onsuccess")
+                        == "successful_only"
+                    ):
+                        self._delete_job_out(job["id"])
+                    else:
+                        self._add_tag(job["id"])
 
-            # Handle completion
-            elif job and job["exit_code"] == 0:
-                self.logger.info(f'Job {job["id"]} succeeded:')
-                self.logger.info(
-                    f'         Tool: {self._tool_id_split(job["tool_id"])}'
-                )
-                successful_jobs[job["id"]] = {
-                    "INFO": self.gi.jobs.show_job(job["id"]),
-                    "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                }
-                self.gi.jobs.cancel_job(job["id"])
+                else:
 
-            else:
-                # Handle failure
-                job_exit_code = (
-                    job["exit_code"] if job and job["exit_code"] is not None else "None"
-                )
-                self.logger.info(
-                    f'Job {job["id"]} failed (exit_code: {job_exit_code}):'
-                )
-                self.logger.info(
-                    f'         Tool: {self._tool_id_split(job["tool_id"])}'
-                )
-                failed_jobs[job["id"]] = {
-                    "INFO": self.gi.jobs.show_job(job["id"]),
-                    "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                    "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                }
-                self._update_history_name(job_id=job["id"])
+                    # Handle failure
+                    job_exit_code = (
+                        job["exit_code"]
+                        if job and job["exit_code"] is not None
+                        else "None"
+                    )
+                    self.logger.info(
+                        f'Job {job["id"]} failed (exit_code: {job_exit_code}):'
+                    )
+                    self.logger.info(
+                        f'         Tool: {self._tool_id_split(job["tool_id"])}'
+                    )
+                    failed_jobs[job["id"]] = {
+                        "INFO": self.gi.jobs.show_job(job["id"]),
+                        "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                        "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                    }
+                    self._add_tag(job["id"], msg_list="err")
+                    self.err_tracker = True
+
         return_values = {
             "SUCCESSFUL_JOBS": successful_jobs,
-            "TIMEOUT_JOBS": timeout_jobs,
+            "RUNNING_JOBS": running_jobs,
+            "QUEUED_JOBS": queued_jobs,
+            "NEW_JOBS": new_jobs,
+            "WAITING_JOBS": waiting_jobs,
             "FAILED_JOBS": failed_jobs,
         }
         return return_values
@@ -478,7 +524,7 @@ class GalaxyTest:
             self.gi.users.update_user(user_id=user_id, user_data=new_prefs)
             if p_endpoint == "None":
                 p_endpoint = "Default"
-            self.logger.update_log_context(name, p_endpoint)
+            self._update_log_context(name, p_endpoint)
             self.logger.info(
                 f"Switching to pulsar endpoint {p_endpoint} " f"from {name} instance"
             )
@@ -506,3 +552,78 @@ class GalaxyTest:
             if check_function():
                 return True
             time.sleep(interval)
+
+    def clean_up(self):
+        """Clean up Galaxy resources based on configuration.
+
+        Cleans up histories and workflows according to the 'clean_history' config setting:
+        - 'always': Always clean up regardless of job status
+        - 'onsuccess': Clean up only if no errors occurred
+        - 'never': Never clean up
+        """
+        clean_his = self.config.get("clean_history", "onsuccess")
+        if not clean_his in ["never", "always", "onsuccess"]:
+            clean_his = "onsuccess"
+        bool_logic = (clean_his == "always") or (
+            clean_his == "onsuccess" and not self.err_tracker
+        )
+        if bool_logic:
+            self.purge_histories()
+        self.purge_workflow()
+        self.logger.info("Clean-up terminated")
+
+    def _add_tag(self, job_id: str, msg_list: list = None):
+        """Add tags to all outputs of a job.
+
+        Args:
+            job_id (str): ID of the job to tag
+            msg_list (str, optional): Additional tag to add. Defaults to None.
+        """
+        job_outputs = self.gi.jobs.get_outputs(job_id)
+        p_endpoint = self.p_endpoint
+        if p_endpoint == "None":
+            p_endpoint = "Default"
+        tag_list = [p_endpoint]
+        if msg_list and len(msg_list) > 0:
+            tag_list.append(msg_list)
+        for output in job_outputs:
+            set_id = output["dataset"]["id"]
+            self.history_client.update_dataset(
+                history_id=self.history["id"], dataset_id=set_id, tags=tag_list
+            )
+        self.logger.info(f"Added tags: {tag_list} to job {job_id} outputs.")
+
+    def _delete_job_out(self, job_id: str):
+        """Delete all output datasets from a successful job.
+
+        Args:
+            job_id (str): ID of the job whose outputs should be deleted
+        """
+        if not self.gi.jobs.cancel_job(job_id):
+            job_outputs = self.gi.jobs.get_outputs(job_id)
+            for output in job_outputs:
+                set_id = output["dataset"]["id"]
+                self.history_client.update_dataset(
+                    history_id=self.history["id"], dataset_id=set_id, deleted=True
+                )
+                self.history_client.delete_dataset(
+                    history_id=self.history["id"], dataset_id=set_id, purge=True
+                )
+                self.logger.info(f"Purging dataset: {set_id}")
+
+
+class WFPathError(Exception):
+    """Exception raised for errors in workflow path configuration.
+
+    Attributes:
+        message (str): Explanation of the error
+    """
+
+    def __init__(self, message: str):
+        """Initialize WFPathError with an error message.
+
+        Args:
+            message (str): Explanation of the error
+        """
+        self.message = message
+        super().__init__(self.message)
