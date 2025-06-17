@@ -8,12 +8,12 @@ P = "place_holder"
 
 # Exit Codes
 
-PATH_EXIT = 1
+PATH_EXIT = int(1)
 
-API_EXIT = 3
+API_EXIT = int(3)
 
-TIMEOUT_EXIT = 42
+TIMEOUT_EXIT = int(42)
 
-GAL_ERROR = 10
+GAL_ERROR = int(10)
 
 JOB_ERR_EXIT = TIMEOUT_EXIT
