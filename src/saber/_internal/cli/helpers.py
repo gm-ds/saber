@@ -169,7 +169,7 @@ def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         _config = _reports_helper(Parsed_Args, _config)
 
         # Execute the main workflow
-        from _internal.core import _wf_launcher
+        from saber._internal.core import _wf_launcher
 
         results = _wf_launcher(_config, Logger)
 

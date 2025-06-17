@@ -87,6 +87,8 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
         Exception: For other unexpected errors during execution.
     """
     results = dict()
+    conn_rr = False
+    exc = False
 
     for i in range(len(config["usegalaxy_instances"])):
 
