@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-CLI helper functions for the Saber tool.
+"""CLI helper functions for the Saber tool.
 
 This module provides utility functions to support command-line interface operations,
 including configuration initialization and report generation setup. These functions
@@ -18,8 +17,7 @@ from saber.biolog import LoggerLike
 
 
 def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]:
-    """
-    Initialize and load the secure configuration for the Saber tool.
+    """Initialize and load the secure configuration for the Saber tool.
 
     Creates a SecureConfig instance, initializes encryption with the provided password,
     and loads the configuration data. Handles both default configuration paths and
@@ -47,6 +45,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
         >>> config = _init_config(logger, args)
         >>> if isinstance(config, dict):
         ...     print(f"Config loaded from: {config['config_path']}")
+
     """
     try:
         # Initialize secure configuration with appropriate path
@@ -74,8 +73,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
 
 
 def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
-    """
-    Configure report generation settings based on command-line arguments.
+    """Configure report generation settings based on command-line arguments.
 
     Checks if any report generation options are enabled and adds timestamp
     information to the configuration dictionary. This function prepares the
@@ -96,6 +94,7 @@ def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
         - Adds a 'date' key with both formatted string and boolean flag
         - The 'sDATETIME' contains human-readable timestamp for report headers
         - The 'nDATETIME' preserves existing date_string setting from config
+
     """
     # Check if any report generation is requested
     report_requested = any(
@@ -123,8 +122,7 @@ def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
 
 
 def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
-    """
-    Main workflow launcher that loads configuration, executes, and reports.
+    """Main workflow launcher that loads configuration, executes, and reports.
 
     This function serves as the primary coordinator for the Saber tool's main workflow.
     It handles configuration initialization, executes the core workflow, and generates
@@ -157,6 +155,7 @@ def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         prevent generation of other formats. The workflow results are expected
         to be a list where results[0] is the exit code and results[1] contains
         the data for report generation.
+
     """
     try:
         _config = _init_config(Logger, Parsed_Args)

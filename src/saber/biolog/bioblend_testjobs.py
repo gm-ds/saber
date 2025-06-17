@@ -26,6 +26,7 @@ class GalaxyTest:
         gpassword (str, optional): To be used along the email of the account
         config (dict, optional): Dictionary containing everything needed for the test jobs excluding the workflow
         class_logger (Any, optional): Logger instance used by the class.
+
     """
 
     def __init__(
@@ -37,6 +38,30 @@ class GalaxyTest:
         config: dict = None,
         Logger: LoggerLike = None,
     ):
+        """Initializes a bioblend Galaxy instance and sets up configuration for job management.
+
+        Args:
+            url (str): The URL of the Galaxy server.
+            key (str): The API key for Galaxy authentication (used if email and gpassword are not provided).
+            email (str, optional): The email address for Galaxy authentication. Defaults to None.
+            gpassword (str, optional): The password for Galaxy authentication. Defaults to None.
+            config (dict, optional): User-defined configuration options to override defaults. Defaults to None.
+            Logger (LoggerLike, optional): Logger instance for logging messages. Defaults to None.
+
+        Attributes:
+            logger: Logger instance for logging.
+            gi: GalaxyInstance object for interacting with the Galaxy server.
+            p_endpoint (str): Placeholder for endpoint information.
+            err_tracker (bool): Error tracking flag.
+            config (dict): Merged configuration dictionary.
+            current_date (str): Current date and time string for history naming.
+            history_client (HistoryClient): Client for managing Galaxy histories.
+            history: Placeholder for the current Galaxy history.
+            wf: Placeholder for the current workflow.
+
+        Raises:
+            None
+        """
         # Initialize GalaxyInstance
         self.logger = Logger
         self.gi = (
@@ -84,6 +109,7 @@ class GalaxyTest:
                 used for logging context. Defaults to "None".
             endpoint (str, optional): Endpoint associated with the Galaxy
                 instance at that moment (e.g., Pulsar endpoint). Defaults to "Default".
+
         """
         if isinstance(self.logger, CustomLogger):
             self.logger.update_log_context(instance_name, endpoint)
@@ -106,6 +132,7 @@ class GalaxyTest:
 
         Returns:
             dict: Dictionary containing the workflow inputs
+
         """
         inputs_data = self.config["data_inputs"] if inputs_data is None else inputs_data
         interval = self.config["interval"] if interval is None else interval
@@ -118,7 +145,7 @@ class GalaxyTest:
         self._upload_workflow()
         inputs_dict = inputs_data
         data = dict()
-        self.logger.info(f"Uploading and building Datasets")
+        self.logger.info("Uploading and building Datasets")
         for file_name, file_options in inputs_dict.items():
             file_url = file_options["url"]
             file_type = file_options["file_type"]
@@ -149,6 +176,7 @@ class GalaxyTest:
 
         Returns:
             bool: True if datasets are ready, False if timeout occurred
+
         """
         maxtime = self.config["maxwait"] if maxtime is None else maxtime
         dataset_client = datasets.DatasetClient(self.gi)
@@ -188,13 +216,14 @@ class GalaxyTest:
 
         Args:
             history_name (str, optional): Defaults to "Pulsar Endpoints Test"
+
         """
         if history_name is None:
             history_name = self.config.get("history_name", f"SABER {self.current_date}")
         # Delete older histories to ensure there's enough free space
         self.purge_histories()
 
-        self.logger.info(f"Creating History...")
+        self.logger.info("Creating History...")
         self.history = self.history_client.create_history(name=history_name)
         self.logger.info(f'         History ID: {self.history["id"]}')
 
@@ -204,6 +233,7 @@ class GalaxyTest:
         Args:
             id: History ID to delete
             purge_bool: Whether to purge the history
+
         """
         try:
             self.history_client.delete_history(history_id=id, purge=purge_bool)
@@ -222,6 +252,7 @@ class GalaxyTest:
 
         Returns:
             str: Cleaned string with numbers/slashes removed and in lowercase
+
         """
         s = re.sub(r"[0-9/:]", "", s)
         s = s.lower()
@@ -233,6 +264,7 @@ class GalaxyTest:
         Args:
             purge_new (bool, optional): Defaults True - purges all histories with test name
             purge_old (bool, optional): Defaults True - purges ALL histories older than one week
+
         """
         if self.history_client is not None:
             for history in self.history_client.get_histories():
@@ -270,13 +302,14 @@ class GalaxyTest:
                             return
 
     def _upload_workflow(self, wf_path: str = None) -> None:
-        """Upload Workflow file to usegalaxy.*
+        """Upload Workflow file to usegalaxy.* instance.
 
         Args:
             wf_path (str, optional): Path to the workflow file. Defaults to config value.
 
         Raises:
             WFPathError: If no workflow path is provided or path doesn't exist
+
         """
         wf_path = self.config.get("ga_path", None) if wf_path is None else wf_path
         if wf_path is None:
@@ -325,6 +358,7 @@ class GalaxyTest:
 
         Returns:
             str: Cleaned tool ID
+
         """
         if "/devteam/" in tool_id:
             return tool_id.split("/devteam/")[1]
@@ -343,6 +377,7 @@ class GalaxyTest:
 
         Returns:
             dict: Dictionary containing the final job status
+
         """
         sleep_time = self.config["sleep_time"] if sleep_time is None else sleep_time
         timeout = self.config["timeout"] if timeout is None else timeout
@@ -382,6 +417,7 @@ class GalaxyTest:
 
         Returns:
             dict: Dictionary containing successful, timeout and failed jobs with their details
+
         """
         running_jobs = {}
         queued_jobs = {}
@@ -484,6 +520,7 @@ class GalaxyTest:
 
         Returns:
             dict: Dictionary containing job status information
+
         """
         timeout = self.config["timeout"] if timeout is None else timeout
         # Workflow invocation
@@ -505,6 +542,7 @@ class GalaxyTest:
         Args:
             p_endpoint (str): The Pulsar endpoint to switch to
             name (str, optional): Name for the Pulsar instance. Defaults to config value
+
         """
         name = self.config["name"] if name is None else name
         user_id = self.gi.users.get_current_user()["id"]
@@ -542,6 +580,7 @@ class GalaxyTest:
 
         Returns:
             bool: True if state was reached, False if timeout occurred
+
         """
         start_time = datetime.now()
         while True:
@@ -562,7 +601,7 @@ class GalaxyTest:
         - 'never': Never clean up
         """
         clean_his = self.config.get("clean_history", "onsuccess")
-        if not clean_his in ["never", "always", "onsuccess"]:
+        if clean_his not in ["never", "always", "onsuccess"]:
             clean_his = "onsuccess"
         bool_logic = (clean_his == "always") or (
             clean_his == "onsuccess" and not self.err_tracker
@@ -578,6 +617,7 @@ class GalaxyTest:
         Args:
             job_id (str): ID of the job to tag
             msg_list (str, optional): Additional tag to add. Defaults to None.
+
         """
         job_outputs = self.gi.jobs.get_outputs(job_id)
         p_endpoint = self.p_endpoint
@@ -598,6 +638,7 @@ class GalaxyTest:
 
         Args:
             job_id (str): ID of the job whose outputs should be deleted
+
         """
         if not self.gi.jobs.cancel_job(job_id):
             job_outputs = self.gi.jobs.get_outputs(job_id)
@@ -617,6 +658,7 @@ class WFPathError(Exception):
 
     Attributes:
         message (str): Explanation of the error
+
     """
 
     def __init__(self, message: str):
@@ -624,6 +666,7 @@ class WFPathError(Exception):
 
         Args:
             message (str): Explanation of the error
+
         """
         self.message = message
         super().__init__(self.message)

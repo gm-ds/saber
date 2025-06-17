@@ -23,6 +23,7 @@ class SecureConfig:
     Args:
         tool_name (str): The name of the tool.
         config_path (Path, optional): An optional path to the configuration file. If not provided, the default config path will be used.
+
     """
 
     def __init__(self, tool_name: str, config_path: Path = None):
@@ -33,6 +34,7 @@ class SecureConfig:
         Args:
             tool_name (str): The name of the tool.
             config_path (Path, optional): An optional path to the configuration file. If not provided, the default config path will be used.
+
         """
         self.tool_name = tool_name
         self.b_tool_name = tool_name.encode("utf-8")
@@ -50,6 +52,7 @@ class SecureConfig:
 
         Returns:
             Path: Path to the configuration file.
+
         """
         if os.name == "nt":  # Windows
             base_path = Path(os.environ.get("APPDATA", Path.home()))
@@ -83,6 +86,7 @@ class SecureConfig:
 
         Returns:
             Path: Path to the configuration file.
+
         """
         return self.config_path
 
@@ -100,6 +104,7 @@ class SecureConfig:
         Note:
             The static salt should be replaced with a properly generated random salt
             to improve security.
+
         """
         static_salt = b"static_salt_value_777"  # TODO: Use seasoning properly
 
@@ -126,6 +131,7 @@ class SecureConfig:
 
         Returns:
             bytes: Encrypted data.
+
         """
         if not self._fernet:
             raise ValueError(
@@ -141,6 +147,7 @@ class SecureConfig:
 
         Returns:
             bytes: Decrypted data.
+
         """
         if not self._fernet:
             raise ValueError(
@@ -153,6 +160,7 @@ class SecureConfig:
 
         Args:
             password (str): String for key derivation.
+
         """
         key = self._derive_key(password)
         self._fernet = Fernet(key)
@@ -165,6 +173,7 @@ class SecureConfig:
 
         Returns:
             bool: True if the configuration file is encrypted, otherwise False.
+
         """
         try:
             with open(self.config_path, "rb") as f:
@@ -191,6 +200,7 @@ class SecureConfig:
         Raises:
             OSError: If file operations fail.
             Exception: If any error occurs during file operations.
+
         """
         # Try using tempfile and replace, can fail in some cases
         try:
@@ -237,6 +247,7 @@ class SecureConfig:
         Raises:
             ValueError: If encryption not initialized or invalid YAML data.
             FileNotFoundError: If configuration file not found.
+
         """
         if not self._fernet:
             raise ValueError(
@@ -275,6 +286,7 @@ class SecureConfig:
         Raises:
             ValueError: If encryption not initialized.
             FileNotFoundError: If configuration file not found.
+
         """
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file {self.config_path} not found")
@@ -309,6 +321,7 @@ class SecureConfig:
 
         Raises:
             ValueError: If encryption not initialized.
+
         """
         if not self._fernet:
             raise ValueError(
@@ -332,6 +345,7 @@ class SecureConfig:
 
         Raises:
             ValueError: If file does not exist, encryption not initialized, or cannot access configuration file.
+
         """
         if not self.config_path.exists():
             raise ValueError(
@@ -369,6 +383,7 @@ class SecureConfig:
 
         Raises:
             ValueError: If file does not exist, encryption not initialized, or cannot access configuration file.
+
         """
         if not self.config_path.exists():
             raise ValueError(
@@ -403,6 +418,7 @@ class SecureConfig:
 
         Returns:
             str: Editor command name.
+
         """
         if os.name == "nt":  # Windows, why do I bother??
             editor = os.environ.get("VISUAL")
@@ -459,6 +475,7 @@ class SecureConfig:
 
         Raises:
             ValueError: If invalid YAML after editing.
+
         """
         current_config = self._edit_load_config()
 
@@ -509,6 +526,7 @@ class SecureConfig:
 
         Returns:
             bytes: The formatted data with newlines inserted every 80 characters
+
         """
         string = data.decode("utf-8")
 
@@ -529,6 +547,7 @@ class SecureConfig:
 
         Returns:
             bytes: The original encrypted data without newlines
+
         """
         string = data.decode("utf-8")
         # Remove all newline characters

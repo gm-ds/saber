@@ -19,6 +19,7 @@ class ContextFilter(logging.Filter):
     Attributes:
         context (dict): Dictionary containing contextual information to inject
             into log records.
+
     """
 
     def __init__(self, context: dict):
@@ -27,6 +28,7 @@ class ContextFilter(logging.Filter):
         Args:
             context (dict): Dictionary containing contextual information.
                 Expected keys are 'GalaxyInstance' and 'Endpoint'.
+
         """
         super().__init__()  # Initialize the parent class!
         self.context = context
@@ -42,6 +44,7 @@ class ContextFilter(logging.Filter):
 
         Returns:
             bool: Always returns True to allow all records to pass through.
+
         """
         record.galaxy = self.context.get("GalaxyInstance", "None")
         record.pulsar = self.context.get("Endpoint", "Default")
@@ -63,6 +66,7 @@ class CustomLogger:
             and endpoint information.
         _log_name (str): Name of the logger instance.
         _logger (logging.Logger): The underlying Python logger instance.
+
     """
 
     def __init__(self, init_log_name: str, dir: Path = None):
@@ -72,6 +76,7 @@ class CustomLogger:
             init_log_name (str): The name to assign to this logger instance.
             dir (Path, optional): Custom directory path for log files. If None,
                 uses platform-specific default directories. Defaults to None.
+
         """
         self._log_context = {"GalaxyInstance": "None", "Endpoint": "None"}
         self._log_name = init_log_name
@@ -97,6 +102,7 @@ class CustomLogger:
         Args:
             log_dir (Path, optional): Custom directory for log files. If provided,
                 the directory will be created if it doesn't exist. Defaults to None.
+
         """
         log_name = f"{self._log_name}.log"
         try:
@@ -173,6 +179,7 @@ class CustomLogger:
         Note:
             If syslog setup fails, a warning is printed but logging continues
             with file-based logging only.
+
         """
         try:
             if platform.system() == "Linux":
@@ -208,6 +215,7 @@ class CustomLogger:
                 used for logging context. Defaults to "None".
             endpoint (str, optional): Endpoint associated with the Galaxy
                 instance at that moment (e.g., Pulsar endpoint). Defaults to "Default".
+
         """
         # Update context dict
         self._log_context["GalaxyInstance"] = instance_name or "None"
@@ -226,6 +234,7 @@ class CustomLogger:
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments passed to the underlying logger.
+
         """
         self._logger.debug(msg, *args, **kwargs)
 
@@ -236,6 +245,7 @@ class CustomLogger:
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments passed to the underlying logger.
+
         """
         self._logger.info(msg, *args, **kwargs)
 
@@ -246,6 +256,7 @@ class CustomLogger:
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments passed to the underlying logger.
+
         """
         self._logger.warning(msg, *args, **kwargs)
 
@@ -256,6 +267,7 @@ class CustomLogger:
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments passed to the underlying logger.
+
         """
         self._logger.error(msg, *args, **kwargs)
 
@@ -266,5 +278,6 @@ class CustomLogger:
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments passed to the underlying logger.
+
         """
         self._logger.critical(msg, *args, **kwargs)

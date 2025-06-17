@@ -10,6 +10,7 @@ def _example_settings() -> int:
 
     Returns:
         int: Always returns 0 (success)
+
     """
     print(_example)
     return 0

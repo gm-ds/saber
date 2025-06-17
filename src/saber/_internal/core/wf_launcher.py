@@ -85,6 +85,7 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
         KeyboardInterrupt: If user interrupts execution.
         ConnectionError: If connection errors occur with usegalaxy.* instances.
         Exception: For other unexpected errors during execution.
+
     """
     results = dict()
     conn_rr = False
@@ -180,12 +181,12 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
                 galaxy_instance.switch_pulsar(useg["default_compute_id"])
 
             except Exception as e:
-                Logger.warning(f"An error occurred while cleaning up:")
+                Logger.warning("An error occurred while cleaning up:")
                 Logger.warning(f"{e}")
                 Logger.warning("Continuing...")
 
             except ConnectionError as e:
-                Logger.warning(f"An error occurred while cleaning up:")
+                Logger.warning("An error occurred while cleaning up:")
                 Logger.warning(f"{e}")
                 Logger.warning("Continuing...")
 

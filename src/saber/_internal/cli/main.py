@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Main entry point for the Saber CLI application.
+"""Main entry point for the Saber CLI application.
 
 This module serves as the primary command dispatcher for the Saber tool, which tests
 multiple useGalaxy instances and Pulsar Endpoints with the BioBlend Library. It handles command-line argument
@@ -21,8 +20,7 @@ from saber.biolog import CustomLogger
 
 
 def main() -> int:
-    """
-    Main entry point for the Saber CLI application.
+    """Main entry point for the Saber CLI application.
 
     Initializes the command-line parser, sets up logging, and dispatches to the
     appropriate command handler based on the parsed arguments. This function
@@ -50,6 +48,7 @@ def main() -> int:
         3. decrypt
         4. edit
         5. main workflow (default action)
+
     """
     # Initialize command-line argument parser with placeholder and default config path
     args = Parser(P, mock_get_default_config_path()).arguments()

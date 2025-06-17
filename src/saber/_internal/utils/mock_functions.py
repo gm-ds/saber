@@ -42,6 +42,7 @@ def mock_get_default_config_path() -> str:
     Note:
         This is a mock function intended for testing, development, string display.
         Its results are not validated.
+
     """
     if os.name == "nt":  # Windows
         base_path = Path(os.environ.get("APPDATA", Path.home()))

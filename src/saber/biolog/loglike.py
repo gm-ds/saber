@@ -21,6 +21,7 @@ class LoggerLike(Protocol):
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments for the logging method.
+
         """
         ...
 
@@ -31,6 +32,7 @@ class LoggerLike(Protocol):
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments for the logging method.
+
         """
         ...
 
@@ -41,6 +43,7 @@ class LoggerLike(Protocol):
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments for the logging method.
+
         """
         ...
 
@@ -51,6 +54,7 @@ class LoggerLike(Protocol):
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments for the logging method.
+
         """
         ...
 
@@ -61,5 +65,6 @@ class LoggerLike(Protocol):
             msg: The message to log.
             *args: Positional arguments for message formatting.
             **kwargs: Keyword arguments for the logging method.
+
         """
         ...

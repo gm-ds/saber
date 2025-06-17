@@ -25,6 +25,7 @@ def _encrypt(Logger: LoggerLike, parsed_args: Namespace) -> int:
     Raises:
         ValueError: If encryption fails
         PermissionError: If file access is not permitted
+
     """
     try:
         secure_config_instance = SecureConfig(TOOL_NAME, parsed_args.encrypt)

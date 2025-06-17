@@ -1,6 +1,8 @@
-"""
-This module imports and exposes all the individual classes that
-can be used by the Saber CLI tool to generate reports files.
+"""Saber CLI code to generate reports files.
+
+The module makes available templates and the Report class for
+report generation in different formats like HTML and Markdown.
+
 """
 
-from saber._internal.output.reports import Report
+from saber._internal.output.reports import Report as Report

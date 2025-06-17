@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Command-line argument parser for the Saber tool.
+"""Command-line argument parser for the Saber tool.
 
 This module provides a Parser class that handles command-line arguments for testing
 multiple useGalaxy instances and Pulsar Endpoints. It includes support for encrypted
@@ -24,8 +23,7 @@ MD_DEFAULT = Path.home().joinpath(
 
 
 class Parser:
-    """
-    Command-line argument parser for the Saber testing tool.
+    """Command-line argument parser for the Saber testing tool.
 
     This class handles parsing and validation of command-line arguments. It supports
     YAML configuration files, multiple output formats, and comprehensive
@@ -44,11 +42,11 @@ class Parser:
     Example:
         >>> parser = Parser("default_placeholder", "/path/to/config.yml")
         >>> args = parser.arguments()
+
     """
 
     def __init__(self, place_holder: str, mock_conf_path: str):
-        """
-        Initialize the Parser with default values and configure all arguments.
+        """Initialize the Parser with default values and configure all arguments.
 
         Sets up the argument parser with all available options, processes the
         arguments, and performs validation checks.
@@ -56,6 +54,7 @@ class Parser:
         Args:
             place_holder (str): Default placeholder value for password field.
             mock_conf_path (str): Default path to the configuration YAML file.
+
         """
         self.place_holder = place_holder
         self.parser = argparse.ArgumentParser(
@@ -77,14 +76,14 @@ class Parser:
         self._output_check()
 
     def _setup_arguments(self, mock_conf_path: str) -> None:
-        """
-        Configure all command-line arguments for the parser.
+        """Configure all command-line arguments for the parser.
 
         Sets up individual arguments and mutually exclusive groups for the
         argument parser instance.
 
         Args:
             mock_conf_path (str): Default configuration file path for help text.
+
         """
         self.parser.add_argument(
             "-p",
@@ -171,8 +170,7 @@ class Parser:
         )
 
     def arguments(self) -> argparse.Namespace:
-        """
-        Return the processed arguments as an argparse Namespace object.
+        """Return the processed arguments as an argparse Namespace object.
 
         Returns:
             argparse.Namespace: Namespace object containing all processed command-line arguments.
@@ -181,12 +179,12 @@ class Parser:
             >>> parser = Parser("placeholder", "/config/path")
             >>> args = parser.arguments()
             >>> print(f"HTML report path: {args.html_report}")
+
         """
         return argparse.Namespace(**self.editable)
 
     def _custom_args_validation(self) -> None:
-        """
-        Validate custom argument combinations and dependencies.
+        """Validate custom argument combinations and dependencies.
 
         Ensures that operations requiring passwords (edit, encrypt, decrypt) have
         a password provided. If example_settings is requested, all other arguments
@@ -199,6 +197,7 @@ class Parser:
         Note:
             When example_settings is True, all other arguments are reset to None
             to prevent conflicts during example generation.
+
         """
         for a in [
             self.editable["edit"],
@@ -214,8 +213,7 @@ class Parser:
             self.editable["example_settings"] = tmp
 
     def _set_password(self) -> None:
-        """
-        Set password from environment variable if available.
+        """Set password from environment variable if available.
 
         Checks for the SABER_PASSWORD environment variable and uses it as the
         password if no password was provided via command line arguments.
@@ -227,6 +225,7 @@ class Parser:
         Note:
             Environment variable takes precedence only when no password is explicitly
             provided via command-line arguments.
+
         """
         temp_pswd = os.getenv("SABER_PASSWORD")
         if self.editable["password"] == self.place_holder and temp_pswd is not None:
@@ -234,8 +233,7 @@ class Parser:
             self.editable["password"] = self.editable["password"].strip()
 
     def _check_password_type(self) -> None:
-        """
-        Process password argument to handle file-based passwords.
+        """Process password argument to handle file-based passwords.
 
         If the password argument points to a file path, reads the file content
         and uses it as the password.
@@ -244,6 +242,7 @@ class Parser:
             If the password argument is a valid file path, the entire file content
             is read and used as the password. The file should contain only the
             password without additional formatting.
+
         """
         if self.editable["password"] is not None:
             if self.editable["password"] != self.place_holder:
@@ -256,8 +255,7 @@ class Parser:
     def _output_check(
         self, output_list: list = ["html_report", "table_html_report", "md_report"]
     ):
-        """
-        Validate output file paths for HTML and Markdown reports.
+        """Validate output file paths for HTML and Markdown reports.
 
         Checks that output paths have valid extensions (.html or .md) and that
         the parent directories exist.
@@ -273,9 +271,10 @@ class Parser:
         Note:
             Valid extensions are .html for HTML reports and .md for Markdown reports.
             Parent directories must exist before the tool runs.
+
         """
         for key in output_list:
-            if self.editable[key] != None:
+            if self.editable[key] is not None:
                 self._path_resolver(self.editable[key], key)
                 parent_o = self.editable[key].parent
                 suff = self.editable[key].suffix in [".html", ".md"]
@@ -284,17 +283,18 @@ class Parser:
                     pass
                 else:
                     self.parser.error(
-                        f"This argument is not a valid path for the HTML or MD output"
+                        "This argument is not a valid path for the HTML or MD output"
                     )
 
     def val_safety_check(self):
-        """
-        Validates YAML file paths and resolves the log directory path. Skips
-        validation if example_settings is requested.
+        """Validates YAML file paths and resolves the log directory path.
+        
+        Skips validation if example_settings is requested.
 
         Note:
             This method coordinates validation of different argument types and
             ensures all file paths are properly resolved and validated.
+
         """
         if self.editable["example_settings"]:
             pass
@@ -309,8 +309,7 @@ class Parser:
             self._path_resolver(self.editable["log_dir"], "log_dir")
 
     def _safety_check(self, args_path: list) -> None:
-        """
-        Validate YAML file paths and extensions.
+        """Validate YAML file paths and extensions.
 
         Ensures that file arguments point to valid YAML files with correct
         extensions (.yaml or .yml) and that the files exist.
@@ -327,6 +326,7 @@ class Parser:
         Note:
             Only validates paths that are not None. Accepted extensions are
             .yaml and .yml (case-sensitive).
+
         """
         for p in args_path:
             if isinstance(p[0], Path) and p[0] is not None:
@@ -337,8 +337,7 @@ class Parser:
                     self.parser.error("This Path does not point to a valid YAML file")
 
     def _path_resolver(self, value, key: str) -> Path:
-        """
-        Resolve file paths to absolute paths with user directory expansion.
+        """Resolve file paths to absolute paths with user directory expansion.
 
         Converts relative paths to absolute paths, expands user directory
         shortcuts (~), and updates the internal argument dictionary.
@@ -357,6 +356,7 @@ class Parser:
             table_html_report, md_report, log_dir), the resolved path is stored
             in the internal editable dictionary and None is returned.
             For other keys, the resolved Path object is returned directly.
+
         """
         if value is not None:
             if not isinstance(value, Path):

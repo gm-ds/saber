@@ -20,6 +20,7 @@ class Report:
         dict_results (dict): Dictionary containing the analysis results data.
         configuration (dict): Configuration dictionary with analysis parameters.
         Logger (LoggerLike): Logger instance for logging messages and errors.
+
     """
 
     def __init__(
@@ -32,6 +33,7 @@ class Report:
             dict_results (dict): Dictionary containing the results.
             configuration (dict): Configuration dictionary containing test settings.
             Logger (LoggerLike): Logger instance for logging messages and errors.
+
         """
         self.logger = Logger
         self.path = path
@@ -49,6 +51,7 @@ class Report:
 
         Raises:
             Exception: If file writing fails after all fallback attempts.
+
         """
         try:
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
@@ -101,6 +104,7 @@ class Report:
                 - instances_counts: Count of instances per availability
                 - urls: Mapping of instance names to URLs
                 - cherry: Pie chart data with success/failure/timeout percentages
+
         """
         endpoint_counts = {}
         instances_counts = {}
@@ -209,8 +213,8 @@ class Report:
         Returns:
             str or None: If standalone=False, returns the rendered HTML string.
                 If standalone=True, writes to file and returns None.
-        """
 
+        """
         script_dir = os.path.dirname(os.path.abspath(__file__))
         table_path = os.path.join(script_dir, "templates", "table_summary.html.j2")
 

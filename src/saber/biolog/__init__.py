@@ -21,6 +21,7 @@ Example:
     >>> logger = CustomLogger("my_test")
     >>> logger.update_log_context("galaxy_main", "pulsar_endpoint_1")
     >>> logger.info("Starting pipeline n.1")
+
 """
 
 from saber.biolog.logger import CustomLogger

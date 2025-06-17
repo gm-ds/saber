@@ -24,6 +24,7 @@ def _decrypt(Logger: LoggerLike, parsed_args: Namespace) -> int:
     Raises:
         ValueError: If decryption fails due to invalid password or file format
         PermissionError: If file access is not permitted
+
     """
     try:
         secure_config_instance = SecureConfig(TOOL_NAME, parsed_args.decrypt)

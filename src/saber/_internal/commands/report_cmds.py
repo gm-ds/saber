@@ -19,6 +19,8 @@ def _html_report(
         parsed_args: Parsed command line arguments containing output path
         Results: Dictionary of workflow results
         Config: Dictionary of configuration settings
+        Logger: Logger instance for command output
+
     """
     from saber._internal.output import Report
 
@@ -41,6 +43,8 @@ def _md_report(
         parsed_args: Parsed command line arguments containing output path
         Results: Dictionary of workflow results
         Config: Dictionary of configuration settings
+        Logger: Logger instance for command output
+
     """
     from saber._internal.output import Report
 
@@ -63,6 +67,8 @@ def _table_html_report(
         parsed_args: Parsed command line arguments containing output path
         Results: Dictionary of workflow results
         Config: Dictionary of configuration settings
+        Logger: Logger instance for command output
+
     """
     from saber._internal.output import Report
 
@@ -82,6 +88,7 @@ def _print_json(parsed_args: Namespace, Results: dict) -> int:
     Args:
         parsed_args: Parsed command line arguments containing flag
         Results: Dictionary of results to print
+
     """
     if parsed_args.print_json:
         print(json.dumps(Results, indent=2, sort_keys=False))
