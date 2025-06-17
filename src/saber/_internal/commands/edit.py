@@ -4,7 +4,7 @@
 from argparse import Namespace
 
 from saber._internal.core import SecureConfig
-from saber._internal.utils.globals import PATH_EXIT, TOOL_NAME
+from saber._internal.utils.globals import ERR_CODES, TOOL_NAME
 from saber.biolog import LoggerLike
 
 
@@ -32,4 +32,4 @@ def _edit(Logger: LoggerLike, parsed_args: Namespace) -> int:
 
     except (ValueError, PermissionError) as e:
         Logger.error(f"An error occurred with configuration: {e}")
-        return PATH_EXIT
+        return ERR_CODES["path"]

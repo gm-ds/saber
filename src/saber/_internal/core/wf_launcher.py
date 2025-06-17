@@ -6,6 +6,10 @@ from typing import Union
 
 from saber.biolog import LoggerLike, WFPathError
 
+from saber._internal.utils.globals import ERR_CODES
+
+from saber.biolog import GalaxyTest
+
 
 def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
     """Launch and monitor workflow tests across multiple Galaxy instances and compute endpoints.
@@ -26,10 +30,10 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
             - int: Returns 0 on complete success
             - list: Returns [error_code, partial_results] on partial success/failure
                 where error_code is one of:
-                    - PATH_EXIT: System exit occurred
-                    - GAL_ERROR: Galaxy API error occurred  
-                    - TIMEOUT_EXIT: Jobs/SABER timed out
-                    - JOB_ERR_EXIT: Jobs failed
+                    - ERR_CODES["path"]: System exit occurred
+                    - ERR_CODES["api"]: Galaxy API error occurred
+                    - ERR_CODES["jobs"]: Jobs failed
+                    - ERR_CODES["gal"]: Galaxy-specific errors
                 and partial_results is a nested dictionary with structure:
                     {
                         "instance_name": {
@@ -82,10 +86,6 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
         ConnectionError: If connection errors occur with usegalaxy.* instances.
         Exception: For other unexpected errors during execution.
     """
-    from saber._internal.utils.globals import ERR_CODES
-
-    from saber.biolog import GalaxyTest
-
     results = dict()
 
     for i in range(len(config["usegalaxy_instances"])):

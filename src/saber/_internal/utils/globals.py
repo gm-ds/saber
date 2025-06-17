@@ -2,18 +2,22 @@
 
 """Global constants and configuration values for the saber application.
 
-This module defines application-wide constants including the tool name,
-parser defaults, and various exit codes used throughout the saber Galaxy
-workflow automation system.
+This module defines application-wide constants used throughout the saber
+Galaxy workflow automation system. These include the tool name, parser
+defaults, and a dictionary of exit codes for various error conditions.
 
-Constants:
-    TOOL_NAME (str): The name of the application tool
-    P (str): Default placeholder value for parser operations
-    PATH_EXIT (int): Exit code for path-related errors
-    API_EXIT (int): Exit code for API-related errors
-    TIMEOUT_EXIT (int): Exit code for timeout errors
-    GAL_ERROR (int): Exit code for Galaxy-specific errors
-    JOB_ERR_EXIT (int): Exit code for job execution errors
+Attributes:
+    TOOL_NAME (str): The name of the saber application tool.
+    P (str): Default placeholder value for parser operations.
+    ERR_CODES (dict[str, int]): Mapping of error type names to their
+        corresponding exit codes. Keys include:
+            - "path": Path-related errors
+            - "api": API-related errors
+            - "args": Argument parsing errors
+            - "jinja2": Jinja2 template errors
+            - "tto": Timeout errors
+            - "gal": Galaxy-specific errors
+            - "job": Job execution errors
 
 Note:
     Exit codes are used to provide specific error information to calling
@@ -21,19 +25,18 @@ Note:
 """
 
 # Secure Config
-TOOL_NAME = "saber"
+TOOL_NAME: str = "saber"
 
 # Parser Defaults
-P = "place_holder"
+P: str = "place_holder"
 
 # Exit Codes
-
-PATH_EXIT = int(1)
-
-API_EXIT = int(3)
-
-TIMEOUT_EXIT = int(42)
-
-GAL_ERROR = int(10)
-
-JOB_ERR_EXIT = TIMEOUT_EXIT
+ERR_CODES: dict[str, int] = {
+    "path": 1,
+    "api": 3,
+    "args": 2,
+    "jinja2": 4,
+    "tto": 42,
+    "gal": 10,
+    "job": 42,
+}

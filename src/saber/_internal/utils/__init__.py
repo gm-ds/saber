@@ -9,11 +9,7 @@ Exports:
 """
 
 from saber._internal.utils.globals import (
-    API_EXIT,
-    GAL_ERROR,
-    JOB_ERR_EXIT,
-    PATH_EXIT,
-    TIMEOUT_EXIT,
+    ERR_CODES,
     TOOL_NAME,
     P,
 )
