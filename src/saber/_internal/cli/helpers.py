@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Union
 
 from saber._internal.core import SecureConfig
-from saber._internal.utils.globals import PATH_EXIT, TOOL_NAME
+from saber._internal.utils.globals import ERR_CODE, TOOL_NAME
 from saber.biolog import LoggerLike
 
 
@@ -32,7 +32,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
 
     Returns:
         Union[dict, int]: Configuration dictionary with loaded settings and config path
-                         on success, or PATH_EXIT integer code on failure.
+                         on success, or ERR_CODE["path"] integer code on failure.
 
     Raises:
         ValueError: When configuration file format is invalid or encryption fails.
@@ -41,7 +41,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
     Note:
         - If parsed_args.settings is None, uses the default configuration path
         - Adds 'config_path' key to the returned configuration dictionary
-        - All exceptions are caught and logged, returning PATH_EXIT for graceful handling
+        - All exceptions are caught and logged, returning ERR_CODE["path"] for graceful handling
 
     Example:
         >>> config = _init_config(logger, args)
@@ -70,7 +70,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
 
     except (ValueError, PermissionError) as e:
         Logger.error(f"An error occurred with configuration: {e}")
-        return PATH_EXIT
+        return ERR_CODE["path"]
 
 
 def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
@@ -180,30 +180,38 @@ def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         if isinstance(results, list):
             # Extract workflow data for report generation (results[1])
             # results[0] contains the exit code, results[1] contains the data
+            rep_returns: list[int] = []
             try:
                 if Parsed_Args.html_report:
                     from saber._internal.commands import _html_report
 
-                    _html_report(Parsed_Args, results[1], _config)
+                    rep_returns.append(
+                        _html_report(Parsed_Args, results[1], _config, Logger)
+                    )
 
                 if Parsed_Args.md_report:
                     from saber._internal.commands import _md_report
 
-                    _md_report(Parsed_Args, results[1], _config)
+                    rep_returns.append(
+                        _md_report(Parsed_Args, results[1], _config, Logger)
+                    )
 
                 if Parsed_Args.table_html_report:
                     from saber._internal.commands import _table_html_report
 
-                    _table_html_report(Parsed_Args, results[1], _config)
+                    rep_returns.append(
+                        _table_html_report(Parsed_Args, results[1], _config, Logger)
+                    )
 
                 if Parsed_Args.print_json:
                     from saber._internal.commands import _print_json
 
-                    _print_json(Parsed_Args, results[1])
+                    rep_returns.append(_print_json(Parsed_Args, results[1]))
 
             except Exception:
                 Logger.warning("The reports might not have been generated.")
-                return 1
+                non_zero = [num for num in rep_returns if num != 0]
+                return min(non_zero)
 
             return results[0]
     except KeyboardInterrupt:

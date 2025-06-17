@@ -4,7 +4,9 @@ import os
 import tempfile
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2 import Template, TemplateError
+
+from saber.biolog import LoggerLike
 
 
 class Report:
@@ -15,18 +17,23 @@ class Report:
 
     Attributes:
         path (Path): The output path where the report will be written.
-        saber_results (dict): Dictionary containing the analysis results data.
-        config (dict): Configuration dictionary with analysis parameters.
+        dict_results (dict): Dictionary containing the analysis results data.
+        configuration (dict): Configuration dictionary with analysis parameters.
+        Logger (LoggerLike): Logger instance for logging messages and errors.
     """
 
-    def __init__(self, path: Path, dict_results: dict, configuration: dict):
+    def __init__(
+        self, path: Path, dict_results: dict, configuration: dict, Logger: LoggerLike
+    ):
         """Initialize the Report instance.
 
         Args:
             path (Path): The file path where the report will be saved.
             dict_results (dict): Dictionary containing the results.
             configuration (dict): Configuration dictionary containing test settings.
+            Logger (LoggerLike): Logger instance for logging messages and errors.
         """
+        self.logger = Logger
         self.path = path
         self.saber_results = dict_results
         self.config = configuration
@@ -51,7 +58,7 @@ class Report:
                 tmp_path = Path(tmp_file.name)
 
             os.replace(tmp_path, self.path)  # Either succed or fails to replace file
-            print(f"Report generated successfully as {self.path}")
+            self.logger.info(f"Report generated successfully at {self.path}")
 
         except OSError:
             # Fallback: Use same-directory temporary file
@@ -64,14 +71,20 @@ class Report:
                     os.fsync(f.fileno())
 
                 os.rename(temp_path, self.path)  # Still atomic like replace
-                print(f"Report generated successfully as {self.path}")
+                self.logger.info(f"Report generated successfully at {self.path}")
             except Exception as e:
                 # Clean up
+                self.logger.warning(f"An error occured while writing the report: {e}")
                 if temp_path.exists():
                     try:
                         os.unlink(temp_path)
+                        self.logger.warning(
+                            f"Temporary file {temp_path} removed after failure"
+                        )
                     except Exception:
-                        pass
+                        self.logger.warning(
+                            f"Failed to remove temporary file {temp_path}"
+                        )
                 raise e
 
     def _process_data(self) -> dict:
@@ -95,9 +108,17 @@ class Report:
         pies = {}
         compute_data = self.saber_results
         # Parse the data structure
+        self.logger.info("Processing data...")
         for available_at, endpoints_data in compute_data.items():
             for endpoint, jobs_data in endpoints_data.items():
-                job_types = ["SUCCESSFUL_JOBS", "FAILED_JOBS", "TIMEOUT_JOBS"]
+                job_types = [
+                    "SUCCESSFUL_JOBS",
+                    "RUNNING_JOBS",
+                    "FAILED_JOBS",
+                    "WAITING_JOBS",
+                    "QUEUED_JOBS",
+                    "NEW_JOBS",
+                ]
 
                 instances_counts.setdefault(available_at, 0)
                 instances_counts[available_at] += 1
@@ -106,26 +127,17 @@ class Report:
                     pies[available_at] = {}
                 if endpoint not in pies[available_at]:
                     pies[available_at][endpoint] = {}
-
-                pies[available_at][endpoint]["tot"] = (
-                    len(jobs_data.get("TIMEOUT_JOBS", {}))
-                    + len(jobs_data.get("FAILED_JOBS", {}))
-                    + len(jobs_data.get("SUCCESSFUL_JOBS", {}))
-                )
+                    pies[available_at][endpoint]["tot"] = 0
+                for k in job_types:
+                    pies[available_at][endpoint]["tot"] += len(jobs_data.get(k, {}))
                 if pies[available_at][endpoint]["tot"] > 0:
                     pies[available_at][endpoint]["bb_errors"] = False
-                    pies[available_at][endpoint]["success"] = (
-                        len(jobs_data.get("SUCCESSFUL_JOBS", {}))
-                        / pies[available_at][endpoint]["tot"]
-                    ) * 100
-                    pies[available_at][endpoint]["failed"] = (
-                        len(jobs_data.get("FAILED_JOBS", {}))
-                        / pies[available_at][endpoint]["tot"]
-                    ) * 100
-                    pies[available_at][endpoint]["timeout"] = (
-                        len(jobs_data.get("TIMEOUT_JOBS", {}))
-                        / pies[available_at][endpoint]["tot"]
-                    ) * 100
+                    for k in job_types:
+                        key = k.split("_")[0].lower()
+                        pies[available_at][endpoint][key] = (
+                            len(jobs_data.get(k, {}))
+                            / pies[available_at][endpoint]["tot"]
+                        ) * 100
                 else:
                     pies[available_at][endpoint]["bb_errors"] = True
 
@@ -172,11 +184,16 @@ class Report:
         template = Template(template_str)
 
         # Render
-        rendered_html = self.output_summary(standalone=False)
-        page_rendered_html = template.render(
-            data=self.saber_results, rendered_html=rendered_html
-        )
+        try:
+            rendered_html = self.output_summary(standalone=False)
+            page_rendered_html = template.render(
+                data=self.saber_results, rendered_html=rendered_html
+            )
+        except TemplateError as e:
+            self.logger.error(f"Template rendering error: {str(e)}")
+            raise
 
+        self.logger.info("HTML page rendering completed.")
         self._write_file(page_rendered_html)
 
     def output_summary(self, standalone: bool):
@@ -193,6 +210,7 @@ class Report:
             str or None: If standalone=False, returns the rendered HTML string.
                 If standalone=True, writes to file and returns None.
         """
+
         script_dir = os.path.dirname(os.path.abspath(__file__))
         table_path = os.path.join(script_dir, "templates", "table_summary.html.j2")
 
@@ -203,11 +221,16 @@ class Report:
         template_context = self._process_data()
 
         # Render
-        rendered_html = table_template.render(
-            **template_context, standalone=standalone, date=self.config["date"]
-        )
+        try:
+            rendered_html = table_template.render(
+                **template_context, standalone=standalone, date=self.config["date"]
+            )
+        except TemplateError as e:
+            self.logger.error(f"Template rendering error: {str(e)}")
+            raise
 
         if standalone:
+            self.logger.info("HTML table rendering completed.")
             self._write_file(rendered_html)
         else:
             return rendered_html
@@ -229,8 +252,13 @@ class Report:
         template_context = self._process_data()
 
         # Render
-        page_rendered_md = template.render(
-            **template_context, data=self.saber_results, date=self.config["date"]
-        )
+        try:
+            page_rendered_md = template.render(
+                **template_context, data=self.saber_results, date=self.config["date"]
+            )
+        except TemplateError as e:
+            self.logger.error(f"Template rendering error: {str(e)}")
+            raise
+        self.logger.info("Markdown file rendering completed.")
 
         self._write_file(page_rendered_md)

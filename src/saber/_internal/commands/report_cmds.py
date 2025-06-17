@@ -4,9 +4,15 @@
 
 import json
 from argparse import Namespace
+from jinja2 import TemplateError
+
+from saber.biolog import LoggerLike
+from saber._internal.utils.globals import ERR_CODES
 
 
-def _html_report(parsed_args: Namespace, Results: dict, Config: dict) -> None:
+def _html_report(
+    parsed_args: Namespace, Results: dict, Config: dict, Logger: LoggerLike
+) -> int:
     """Generate an HTML report from Workflow results.
 
     Args:
@@ -16,11 +22,19 @@ def _html_report(parsed_args: Namespace, Results: dict, Config: dict) -> None:
     """
     from saber._internal.output import Report
 
-    report = Report(parsed_args.html_report, Results, Config)
-    report.output_page()
+    try:
+        report = Report(parsed_args.html_report, Results, Config, Logger)
+        report.output_page()
+        return 0
+    except TemplateError:
+        return ERR_CODES["jinja2"]
+    except Exception:
+        return ERR_CODES["path"]
 
 
-def _md_report(parsed_args: Namespace, Results: dict, Config: dict) -> None:
+def _md_report(
+    parsed_args: Namespace, Results: dict, Config: dict, Logger: LoggerLike
+) -> int:
     """Generate an Markdown report from Workflow results.
 
     Args:
@@ -30,11 +44,19 @@ def _md_report(parsed_args: Namespace, Results: dict, Config: dict) -> None:
     """
     from saber._internal.output import Report
 
-    report = Report(parsed_args.md_report, Results, Config)
-    report.output_md()
+    try:
+        report = Report(parsed_args.md_report, Results, Config, Logger)
+        report.output_md()
+        return 0
+    except TemplateError:
+        return ERR_CODES["jinja2"]
+    except Exception:
+        return ERR_CODES["path"]
 
 
-def _table_html_report(parsed_args: Namespace, Results: dict, Config: dict) -> None:
+def _table_html_report(
+    parsed_args: Namespace, Results: dict, Config: dict, Logger: LoggerLike
+) -> int:
     """Generate an HTML table summary from workflow results.
 
     Args:
@@ -44,11 +66,17 @@ def _table_html_report(parsed_args: Namespace, Results: dict, Config: dict) -> N
     """
     from saber._internal.output import Report
 
-    summary = Report(parsed_args.table_html_report, Results, Config)
-    summary.output_summary(True)
+    try:
+        summary = Report(parsed_args.table_html_report, Results, Config, Logger)
+        summary.output_summary(True)
+        return 0
+    except TemplateError:
+        return ERR_CODES["jinja2"]
+    except Exception:
+        return ERR_CODES["path"]
 
 
-def _print_json(parsed_args: Namespace, Results: dict) -> None:
+def _print_json(parsed_args: Namespace, Results: dict) -> int:
     """Print results in JSON format to stdout.
 
     Args:
@@ -57,3 +85,4 @@ def _print_json(parsed_args: Namespace, Results: dict) -> None:
     """
     if parsed_args.print_json:
         print(json.dumps(Results, indent=2, sort_keys=False))
+        return 0
