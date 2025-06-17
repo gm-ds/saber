@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 
-from argparse import Namespace
+from typing import Union
 
 from saber.biolog import LoggerLike
 
 
-def _job_launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
-    from saber._internal.cli import _init_config, _reports_helper
-    from saber._internal.commands import (
-        _html_report,
-        _md_report,
-        _print_json,
-        _table_html_report,
-    )
+def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
+
     from saber._internal.utils.globals import (
         GAL_ERROR,
         JOB_ERR_EXIT,
@@ -20,12 +14,6 @@ def _job_launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         TIMEOUT_EXIT,
     )
     from saber.biolog import GalaxyTest
-
-    config = _init_config(Logger, Parsed_Args)
-    if not isinstance(config, dict):
-        return config
-
-    config = _reports_helper(Parsed_Args, config)
 
     results = dict()
 
@@ -47,11 +35,7 @@ def _job_launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         )
 
         try:
-            try:
-                input = galaxy_instance.test_job_set_up()
-            except SystemExit as e:
-                Logger.error(f"Program exiting with code {e}")
-                return PATH_EXIT
+            input = galaxy_instance.test_job_set_up()
 
             for pe in useg["endpoints"]:
                 galaxy_instance.switch_pulsar(pe)
@@ -80,6 +64,11 @@ def _job_launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
             galaxy_instance.switch_pulsar(useg["default_compute_id"])
             Logger.info("Test completed")
 
+        except SystemExit as e:
+            Logger.error(f"Program exiting with code: {e}")
+            if i == len(config["usegalaxy_instances"]) - 1:
+                Logger.warning("Exiting with error")
+                return [PATH_EXIT, results]
         except KeyboardInterrupt:
             Logger.warning("Test interrupted")
             galaxy_instance.purge_histories()
@@ -95,25 +84,17 @@ def _job_launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
             Logger.info("Clean-up terminated")
             if i == len(config["usegalaxy_instances"]) - 1:
                 Logger.warning("Exiting with error")
-                return GAL_ERROR
+                return [GAL_ERROR, results]
             Logger.warning("Skipping to the next instance")
-
-    _html_report(Parsed_Args, results, config)
-
-    _md_report(Parsed_Args, results, config)
-
-    _table_html_report(Parsed_Args, results, config)
-
-    _print_json(Parsed_Args, results)
 
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():
             if job_data.get("TIMEOUT_JOBS"):
                 Logger.warning(f"Timeout jobs found in {g_name}/{com_id}.")
                 Logger.warning(f"Exiting with code: {TIMEOUT_EXIT}")
-                return TIMEOUT_EXIT
+                return [TIMEOUT_EXIT, results]
             if job_data.get("FAILED_JOBS"):
                 Logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
                 Logger.warning(f"Exiting with code: {JOB_ERR_EXIT}")
-                return JOB_ERR_EXIT
-    return 0
+                return [JOB_ERR_EXIT, results]
+    return [0, results]
