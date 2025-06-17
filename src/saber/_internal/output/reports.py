@@ -8,12 +8,41 @@ from jinja2 import Template
 
 
 class Report:
+    """Generate reports from Workflow results.
+
+    This class handles the generation of various report formats (HTML, Markdown)
+    from Galaxy instance tests results using Jinja2 templates.
+
+    Attributes:
+        path (Path): The output path where the report will be written.
+        saber_results (dict): Dictionary containing the analysis results data.
+        config (dict): Configuration dictionary with analysis parameters.
+    """
+
     def __init__(self, path: Path, dict_results: dict, configuration: dict):
+        """Initialize the Report instance.
+
+        Args:
+            path (Path): The file path where the report will be saved.
+            dict_results (dict): Dictionary containing the results.
+            configuration (dict): Configuration dictionary containing test settings.
+        """
         self.path = path
         self.saber_results = dict_results
         self.config = configuration
 
     def _write_file(self, content):
+        """Write content to file using atomic operations.
+
+        Attempts to write content atomically using temporary files to prevent
+        data corruption. Falls back to same-directory temporary files if needed.
+
+        Args:
+            content (str): The content to write to the file.
+
+        Raises:
+            Exception: If file writing fails after all fallback attempts.
+        """
         try:
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
                 tmp_file.write(content)
@@ -46,6 +75,20 @@ class Report:
                 raise e
 
     def _process_data(self) -> dict:
+        """Process raw Saber results into template-ready data structures.
+
+        Transforms the raw results into organized data structures
+        including endpoint counts, instance counts, URLs, and pie chart data
+        for template rendering.
+
+        Returns:
+            dict: Processed data dictionary containing:
+                - compute_data: Original computation results
+                - endpoint_counts: Count of jobs per endpoint/instance combination
+                - instances_counts: Count of instances per availability
+                - urls: Mapping of instance names to URLs
+                - cherry: Pie chart data with success/failure/timeout percentages
+        """
         endpoint_counts = {}
         instances_counts = {}
         urls = {}
@@ -115,7 +158,11 @@ class Report:
         }
 
     def output_page(self) -> None:
+        """Generate a complete HTML report page.
 
+        Creates a full HTML page report using the galaxy_template.html.j2 template.
+        The page includes both the rendered summary table and the raw data in a single HTML.
+        """
         script_dir = os.path.dirname(os.path.abspath(__file__))
         template_path = os.path.join(script_dir, "templates", "galaxy_template.html.j2")
 
@@ -133,7 +180,19 @@ class Report:
         self._write_file(page_rendered_html)
 
     def output_summary(self, standalone: bool):
+        """Generate an HTML summary table.
 
+        Creates an HTML summary table using the table_summary.html.j2 template.
+        Can be used either as a standalone file or as part of a larger page.
+
+        Args:
+            standalone (bool): If True, writes the summary to file. If False,
+                returns the rendered HTML string for embedding in other templates.
+
+        Returns:
+            str or None: If standalone=False, returns the rendered HTML string.
+                If standalone=True, writes to file and returns None.
+        """
         script_dir = os.path.dirname(os.path.abspath(__file__))
         table_path = os.path.join(script_dir, "templates", "table_summary.html.j2")
 
@@ -154,7 +213,12 @@ class Report:
             return rendered_html
 
     def output_md(self) -> None:
+        """Generate a Markdown report.
 
+        Creates a Markdown format report using the galaxy_report.md.j2 template.
+        The report includes processed data and analysis results formatted for
+        Markdown display.
+        """
         script_dir = os.path.dirname(os.path.abspath(__file__))
         template_path = os.path.join(script_dir, "templates", "galaxy_report.md.j2")
 
