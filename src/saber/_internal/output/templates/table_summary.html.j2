@@ -1,3 +1,4 @@
+
 {% if standalone %}
 <!DOCTYPE html>
 <html lang="en">
@@ -115,6 +116,32 @@
             margin-bottom: 15px;
             border-left: 3px solid #3498db;
         }
+        .job-status-new {
+            color: #7f8c8d;
+            font-weight: bold;
+        }
+
+        .job-status-queued {
+            color: #95a5a6;
+            font-weight: bold;
+        }
+
+        .job-status-waiting {
+            color: #bdc3c7;
+            font-weight: bold;
+        }
+
+        .new-badge {
+            background-color: #7f8c8d;
+        }
+
+        .queued-badge {
+            background-color: #95a5a6;
+        }
+
+        .waiting-badge {
+            background-color: #bdc3c7;
+        }
     </style>
 </head>
     <body>
@@ -170,9 +197,12 @@
                                         height: 50px;
                                         border-radius: 50%;
                                         background: conic-gradient(
-                                            #2ecc71 0% {{ cherry[available_at][endpoint]['success'] }}%,
-                                            #e74c3c {{ cherry[available_at][endpoint]['success'] }}% {{ cherry[available_at][endpoint]['success'] + cherry[available_at][endpoint]['failed'] }}%,
-                                            #f39c12 {{ cherry[available_at][endpoint]['success'] + cherry[available_at][endpoint]['failed'] }}% {{ cherry[available_at][endpoint]['success'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['timeout'] }}%
+                                            #2ecc71 0% {{ cherry[available_at][endpoint]['successful'] }}%,
+                                            #e74c3c {{ cherry[available_at][endpoint]['successful'] }}% {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] }}%,
+                                            #f39c12 {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] }}% {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] }}%,
+                                            #7f8c8d {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] }}% {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] + cherry[available_at][endpoint]['new'] }}%,
+                                            #95a5a6 {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] + cherry[available_at][endpoint]['new'] }}% {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] + cherry[available_at][endpoint]['new'] + cherry[available_at][endpoint]['queued'] }}%,
+                                            #bdc3c7 {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] + cherry[available_at][endpoint]['new'] + cherry[available_at][endpoint]['queued'] }}% {{ cherry[available_at][endpoint]['successful'] + cherry[available_at][endpoint]['failed'] + cherry[available_at][endpoint]['running'] + cherry[available_at][endpoint]['new'] + cherry[available_at][endpoint]['queued'] + + cherry[available_at][endpoint]['waiting'] }}%
                                         );"
                                     >
                             </div>
