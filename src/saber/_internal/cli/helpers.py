@@ -158,46 +158,53 @@ def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         to be a list where results[0] is the exit code and results[1] contains
         the data for report generation.
     """
-    _config = _init_config(Logger, Parsed_Args)
+    try:
+        _config = _init_config(Logger, Parsed_Args)
 
-    # Early return if configuration initialization failed
-    if not isinstance(_config, dict):
-        return _config
+        # Early return if configuration initialization failed
+        if not isinstance(_config, dict):
+            return _config
 
-    # Configure report settings and add timestamp metadata
-    _config = _reports_helper(Parsed_Args, _config)
+        # Configure report settings and add timestamp metadata
+        _config = _reports_helper(Parsed_Args, _config)
 
-    # Execute the main workflow
-    from _internal.core import _wf_launcher
+        # Execute the main workflow
+        from _internal.core import _wf_launcher
 
-    results = _wf_launcher(_config, Logger)
+        results = _wf_launcher(_config, Logger)
 
-    if isinstance(results, int):
-        return results
+        if isinstance(results, int):
+            return results
 
-    # Generate requested output reports
-    if isinstance(results, list):
-        # Extract workflow data for report generation (results[1])
-        # results[0] contains the exit code, results[1] contains the data
+        # Generate requested output reports
+        if isinstance(results, list):
+            # Extract workflow data for report generation (results[1])
+            # results[0] contains the exit code, results[1] contains the data
+            try:
+                if Parsed_Args.html_report:
+                    from saber._internal.commands import _html_report
 
-        if Parsed_Args.html_report:
-            from saber._internal.commands import _html_report
+                    _html_report(Parsed_Args, results[1], _config)
 
-            _html_report(Parsed_Args, results[1], _config)
+                if Parsed_Args.md_report:
+                    from saber._internal.commands import _md_report
 
-        if Parsed_Args.md_report:
-            from saber._internal.commands import _md_report
+                    _md_report(Parsed_Args, results[1], _config)
 
-            _md_report(Parsed_Args, results[1], _config)
+                if Parsed_Args.table_html_report:
+                    from saber._internal.commands import _table_html_report
 
-        if Parsed_Args.table_html_report:
-            from saber._internal.commands import _table_html_report
+                    _table_html_report(Parsed_Args, results[1], _config)
 
-            _table_html_report(Parsed_Args, results[1], _config)
+                if Parsed_Args.print_json:
+                    from saber._internal.commands import _print_json
 
-        if Parsed_Args.print_json:
-            from saber._internal.commands import _print_json
+                    _print_json(Parsed_Args, results[1])
 
-            _print_json(Parsed_Args, results[1])
+            except Exception:
+                Logger.warning("The reports might not have been generated.")
+                return 1
 
-        return results[0]
+            return results[0]
+    except KeyboardInterrupt:
+        return 0
