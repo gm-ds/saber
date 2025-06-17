@@ -3,9 +3,9 @@
 from argparse import Namespace
 
 
-def _table_html_report(__args: Namespace, _results: dict, _config: dict) -> None:
-    if __args.table_html_report:
+def _table_html_report(parsed_args: Namespace, Results: dict, Config: dict) -> None:
+    if parsed_args.table_html_report:
         from saber._internal.output import Report
 
-        summary = Report(__args.table_html_report, _results, _config)
+        summary = Report(parsed_args.table_html_report, Results, Config)
         summary.output_summary(True)

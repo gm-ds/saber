@@ -5,7 +5,7 @@ from argparse import Namespace
 from saber.biolog import LoggerLike
 
 
-def _job_launcher(_args: Namespace, Logger: LoggerLike) -> int:
+def _job_launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
     from saber._internal.cli import _init_config, _reports_helper
     from saber._internal.commands import (
         _html_report,
@@ -21,11 +21,11 @@ def _job_launcher(_args: Namespace, Logger: LoggerLike) -> int:
     )
     from saber.biolog import GalaxyTest
 
-    config = _init_config(Logger, _args)
+    config = _init_config(Logger, Parsed_Args)
     if not isinstance(config, dict):
         return config
 
-    config = _reports_helper(_args, config)
+    config = _reports_helper(Parsed_Args, config)
 
     results = dict()
 
@@ -98,13 +98,13 @@ def _job_launcher(_args: Namespace, Logger: LoggerLike) -> int:
                 return GAL_ERROR
             Logger.warning("Skipping to the next instance")
 
-    _html_report(_args, results, config)
+    _html_report(Parsed_Args, results, config)
 
-    _md_report(_args, results, config)
+    _md_report(Parsed_Args, results, config)
 
-    _table_html_report(_args, results, config)
+    _table_html_report(Parsed_Args, results, config)
 
-    _print_json(_args, results)
+    _print_json(Parsed_Args, results)
 
     for g_name, g_data in results.items():
         for com_id, job_data in g_data.items():

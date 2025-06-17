@@ -4,12 +4,16 @@ from argparse import Namespace
 from datetime import datetime
 
 
-def _reports_helper(__args: Namespace, settings: dict) -> dict:
-    if __args.html_report or __args.table_html_report or __args.md_report:
+def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:
+    if (
+        parsed_args.html_report
+        or parsed_args.table_html_report
+        or parsed_args.md_report
+    ):
         start_dt = datetime.now()
         start_d = start_dt.strftime("%b %d, %Y %H:%M")
-        string = settings.get("date_string", False)
-        settings["date"] = {"sDATETIME": start_d, "nDATETIME": string}
-        return settings
+        string = Config.get("date_string", False)
+        Config["date"] = {"sDATETIME": start_d, "nDATETIME": string}
+        return Config
     else:
-        return settings
+        return Config

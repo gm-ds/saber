@@ -7,14 +7,14 @@ from saber._internal.utils.globals import PATH_EXIT, TOOL_NAME
 from saber.biolog import LoggerLike
 
 
-def _decrypt(_logger: LoggerLike, _args: Namespace) -> int:
+def _decrypt(Logger: LoggerLike, parsed_args: Namespace) -> int:
     try:
-        secure_config_instance = SecureConfig(TOOL_NAME, _args.decrypt)
-        secure_config_instance.initialize_encryption(_args.password)
+        secure_config_instance = SecureConfig(TOOL_NAME, parsed_args.decrypt)
+        secure_config_instance.initialize_encryption(parsed_args.password)
         secure_config_instance.decrypt_existing_file()
-        _logger.info(f"File decrypted: {_args.decrypt}")
+        Logger.info(f"File decrypted: {parsed_args.decrypt}")
         return 0
 
     except (ValueError, PermissionError) as e:
-        _logger.error(f"An error occurred with configuration: {e}")
+        Logger.error(f"An error occurred with configuration: {e}")
         return PATH_EXIT
