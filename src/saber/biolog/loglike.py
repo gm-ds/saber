@@ -14,7 +14,7 @@ class LoggerLike(Protocol):
     with any logger implementation that provides these methods.
     """
 
-    def debug(self, msg, *args, **kwargs):
+    def debug(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log a debug message.
 
         Args:
@@ -25,7 +25,7 @@ class LoggerLike(Protocol):
         """
         ...
 
-    def info(self, msg, *args, **kwargs):
+    def info(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log an info message.
 
         Args:
@@ -36,7 +36,7 @@ class LoggerLike(Protocol):
         """
         ...
 
-    def warning(self, msg, *args, **kwargs):
+    def warning(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log a warning message.
 
         Args:
@@ -47,7 +47,7 @@ class LoggerLike(Protocol):
         """
         ...
 
-    def error(self, msg, *args, **kwargs):
+    def error(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log an error message.
 
         Args:
@@ -58,7 +58,7 @@ class LoggerLike(Protocol):
         """
         ...
 
-    def critical(self, msg, *args, **kwargs):
+    def critical(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log a critical message.
 
         Args:

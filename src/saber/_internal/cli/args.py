@@ -45,7 +45,7 @@ class Parser:
 
     """
 
-    def __init__(self, place_holder: str, mock_conf_path: str):
+    def __init__(self, place_holder: str, mock_conf_path: str) -> None:
         """Initialize the Parser with default values and configure all arguments.
 
         Sets up the argument parser with all available options, processes the
@@ -55,6 +55,8 @@ class Parser:
             place_holder (str): Default placeholder value for password field.
             mock_conf_path (str): Default path to the configuration YAML file.
 
+        Returns:
+            None
         """
         self.place_holder = place_holder
         self.parser = argparse.ArgumentParser(
@@ -254,7 +256,7 @@ class Parser:
 
     def _output_check(
         self, output_list: list = ["html_report", "table_html_report", "md_report"]
-    ):
+    ) -> None:
         """Validate output file paths for HTML and Markdown reports.
 
         Checks that output paths have valid extensions (.html or .md) and that
@@ -263,6 +265,9 @@ class Parser:
         Args:
             output_list (list, optional): List of output argument keys to validate.
                                         Defaults to ["html_report", "table_html_report", "md_report"].
+
+        Returns:
+            None
 
         Raises:
             argparse.ArgumentError: If any output path is invalid (wrong extension
@@ -286,10 +291,14 @@ class Parser:
                         "This argument is not a valid path for the HTML or MD output"
                     )
 
-    def val_safety_check(self):
+    def val_safety_check(self) -> None:
         """Validates YAML file paths and resolves the log directory path.
         
         Skips validation if example_settings is requested.
+
+        Returns:
+            None
+        
 
         Note:
             This method coordinates validation of different argument types and
@@ -336,7 +345,7 @@ class Parser:
                 else:
                     self.parser.error("This Path does not point to a valid YAML file")
 
-    def _path_resolver(self, value, key: str) -> Path:
+    def _path_resolver(self, value: any, key: str) -> Path:
         """Resolve file paths to absolute paths with user directory expansion.
 
         Converts relative paths to absolute paths, expands user directory

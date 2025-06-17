@@ -26,7 +26,7 @@ class SecureConfig:
 
     """
 
-    def __init__(self, tool_name: str, config_path: Path = None):
+    def __init__(self, tool_name: str, config_path: Path = None) -> None:
         """Initializes the SecureConfig object with a tool name and configuration path.
 
         If no configuration path is provided, the default configuration path will be used.
@@ -34,6 +34,9 @@ class SecureConfig:
         Args:
             tool_name (str): The name of the tool.
             config_path (Path, optional): An optional path to the configuration file. If not provided, the default config path will be used.
+
+        Returns:
+            None
 
         """
         self.tool_name = tool_name
@@ -114,11 +117,15 @@ class SecureConfig:
         key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
         return key
 
-    def _set_secure_permissions(self):
+    def _set_secure_permissions(self) -> None:
         """Set secure file permissions on the configuration file.
 
         On Unix-like systems, sets the file permissions to 600 (user read/write only).
         On Windows systems... well...
+
+        Returns:
+            None
+
         """
         if os.name == "posix":
             os.chmod(self.config_path, stat.S_IRUSR | stat.S_IWUSR)  # 600 permissions
@@ -155,11 +162,14 @@ class SecureConfig:
             )
         return self._fernet.decrypt(self._remove_newlines(encrypted_data))
 
-    def initialize_encryption(self, password: str):
+    def initialize_encryption(self, password: str) -> None:
         """Fernet initialization with derived key.
 
         Args:
             password (str): String for key derivation.
+
+        Returns:
+            None
 
         """
         key = self._derive_key(password)
@@ -187,7 +197,7 @@ class SecureConfig:
         except Exception:
             return False
 
-    def _write_file(self, data: bytes):
+    def _write_file(self, data: bytes) -> None:
         """Safely write data to the configuration file using atomic operations.
 
         Uses a temporary file to ensure atomic writes and prevent corruption.
@@ -239,10 +249,13 @@ class SecureConfig:
                         pass
                 raise e
 
-    def encrypt_existing_file(self):
+    def encrypt_existing_file(self) -> None:
         """Encrypt an existing configuration YAML file.
 
         Validates YAML format before encryption.
+
+        Returns:
+            None
 
         Raises:
             ValueError: If encryption not initialized or invalid YAML data.
@@ -280,8 +293,11 @@ class SecureConfig:
         else:
             return
 
-    def decrypt_existing_file(self):
+    def decrypt_existing_file(self) -> None:
         """Decrypt an existing configuration YAML file.
+
+        Returns:
+            None
 
         Raises:
             ValueError: If encryption not initialized.
@@ -313,11 +329,14 @@ class SecureConfig:
 
             return
 
-    def _edit_save_config(self, config_data: any):
+    def _edit_save_config(self, config_data: any) -> None:
         """Save encrypted data to configuration file.
 
         Args:
             config_data (any): Configuration data.
+
+        Returns:
+            None            
 
         Raises:
             ValueError: If encryption not initialized.
@@ -468,7 +487,7 @@ class SecureConfig:
 
         return editor
 
-    def edit_config(self):
+    def edit_config(self) -> None:
         """Open the editor with the decrypted file for editing.
 
         Uses tempfile to store modification before saving it to the configuration YAML file.

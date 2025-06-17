@@ -5,6 +5,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Callable
 
 from bioblend import ConnectionError
 from bioblend.galaxy import GalaxyInstance, datasets
@@ -37,7 +38,7 @@ class GalaxyTest:
         gpassword: str = None,
         config: dict = None,
         Logger: LoggerLike = None,
-    ):
+    ) -> None:
         """Initializes a bioblend Galaxy instance and sets up configuration for job management.
 
         Args:
@@ -58,6 +59,9 @@ class GalaxyTest:
             history_client (HistoryClient): Client for managing Galaxy histories.
             history: Placeholder for the current Galaxy history.
             wf: Placeholder for the current workflow.
+
+        Returns:
+            None
 
         Raises:
             None
@@ -95,7 +99,7 @@ class GalaxyTest:
 
     def _update_log_context(
         self, instance_name: str = "None", endpoint: str = "Default"
-    ):
+    ) -> None:
         """Update the logging context with Galaxy instance and endpoint information.
 
         This method updates the contextual information that gets injected into
@@ -109,6 +113,9 @@ class GalaxyTest:
                 used for logging context. Defaults to "None".
             endpoint (str, optional): Endpoint associated with the Galaxy
                 instance at that moment (e.g., Pulsar endpoint). Defaults to "Default".
+
+        Returns:
+            None
 
         """
         if isinstance(self.logger, CustomLogger):
@@ -182,7 +189,12 @@ class GalaxyTest:
         dataset_client = datasets.DatasetClient(self.gi)
         all_datasets = dataset_client.get_datasets(history_id=self.history["id"])
 
-        def check_dataset_ready():
+        def check_dataset_ready() -> bool:
+            """Check if datasets are ready for processing.
+
+            Returns:
+                bool: True if all datasets are in terminal state, False otherwise.
+            """
             for dataset in all_datasets:
                 dataset_id = dataset["id"]
 
@@ -227,12 +239,12 @@ class GalaxyTest:
         self.history = self.history_client.create_history(name=history_name)
         self.logger.info(f'         History ID: {self.history["id"]}')
 
-    def _safe_delete_history(self, id, purge_bool) -> None:
+    def _safe_delete_history(self, id: str, purge_bool: bool) -> None:
         """Safely delete a history, handling immutable histories.
 
         Args:
-            id: History ID to delete
-            purge_bool: Whether to purge the history
+            id (str): History ID to delete
+            purge_bool (bool): Whether to purge the history
 
         """
         try:
@@ -382,7 +394,12 @@ class GalaxyTest:
         sleep_time = self.config["sleep_time"] if sleep_time is None else sleep_time
         timeout = self.config["timeout"] if timeout is None else timeout
 
-        def job_completed():
+        def job_completed() -> bool:
+            """Check if all jobs in the invocation have completed.
+            
+            Returns:
+                bool: True if all jobs are completed, False otherwise.
+            """
             # Get job status
             jobs = self.gi.jobs.get_jobs(invocation_id=invocation_id)
             if not jobs:
@@ -568,12 +585,12 @@ class GalaxyTest:
             )
 
     def _wait_for_state(
-        self, check_function, timeout: int, interval: int, error_msg: str
-    ):
+        self, check_function: Callable[[], bool], timeout: int, interval: int, error_msg: str
+    ) -> bool | None:
         """Waits for a specific state to be reached by periodically checking.
 
         Args:
-            check_function (callable): Function that returns a boolean indicating state
+            check_function (Callable[[], bool]): Function that returns a boolean indicating state
             timeout (int): Maximum time to wait (in seconds)
             interval (int): Time between checks (in seconds)
             error_msg (str): Message to log if timeout is exceeded
@@ -592,7 +609,7 @@ class GalaxyTest:
                 return True
             time.sleep(interval)
 
-    def clean_up(self):
+    def clean_up(self) -> None:
         """Clean up Galaxy resources based on configuration.
 
         Cleans up histories and workflows according to the 'clean_history' config setting:
@@ -611,7 +628,7 @@ class GalaxyTest:
         self.purge_workflow()
         self.logger.info("Clean-up terminated")
 
-    def _add_tag(self, job_id: str, msg_list: list = None):
+    def _add_tag(self, job_id: str, msg_list: list = None) -> None:
         """Add tags to all outputs of a job.
 
         Args:
@@ -633,7 +650,7 @@ class GalaxyTest:
             )
         self.logger.info(f"Added tags: {tag_list} to job {job_id} outputs.")
 
-    def _delete_job_out(self, job_id: str):
+    def _delete_job_out(self, job_id: str) -> None:
         """Delete all output datasets from a successful job.
 
         Args:
@@ -661,7 +678,7 @@ class WFPathError(Exception):
 
     """
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         """Initialize WFPathError with an error message.
 
         Args:

@@ -22,7 +22,7 @@ class ContextFilter(logging.Filter):
 
     """
 
-    def __init__(self, context: dict):
+    def __init__(self, context: dict) -> None:
         """Initialize the ContextFilter with a context dictionary.
 
         Args:
@@ -33,7 +33,7 @@ class ContextFilter(logging.Filter):
         super().__init__()  # Initialize the parent class!
         self.context = context
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         """Filter and modify log records by adding contextual information.
 
         This method is called for each log record and adds galaxy and pulsar
@@ -69,7 +69,7 @@ class CustomLogger:
 
     """
 
-    def __init__(self, init_log_name: str, dir: Path = None):
+    def __init__(self, init_log_name: str, dir: Path = None) -> None:
         """Initialize the CustomLogger with specified name and optional directory.
 
         Args:
@@ -85,7 +85,7 @@ class CustomLogger:
         self._logger = None
         self._setup_logging(dir)
 
-    def _setup_logging(self, log_dir: Path = None):
+    def _setup_logging(self, log_dir: Path = None) -> None:
         """Set up logging with custom formatter, handlers, and syslog.
 
         Configures the logger with:
@@ -166,7 +166,7 @@ class CustomLogger:
         # Prevent duplicate logs
         bioblend_logger.propagate = False
 
-    def _setup_syslog(self):
+    def _setup_syslog(self) -> None:
         """Set up syslog handler for system-level logging.
 
         Configures platform-specific syslog integration:
@@ -202,7 +202,7 @@ class CustomLogger:
 
     def update_log_context(
         self, instance_name: str = "None", endpoint: str = "Default"
-    ):
+    ) -> None:
         """Update the logging context with Galaxy instance and endpoint information.
 
         This method updates the contextual information that gets injected into
@@ -227,7 +227,7 @@ class CustomLogger:
 
     # __getattr__ didn't cut it
 
-    def debug(self, msg, *args, **kwargs):
+    def debug(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log a debug message.
 
         Args:
@@ -238,7 +238,7 @@ class CustomLogger:
         """
         self._logger.debug(msg, *args, **kwargs)
 
-    def info(self, msg, *args, **kwargs):
+    def info(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log an info message.
 
         Args:
@@ -249,7 +249,7 @@ class CustomLogger:
         """
         self._logger.info(msg, *args, **kwargs)
 
-    def warning(self, msg, *args, **kwargs):
+    def warning(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log a warning message.
 
         Args:
@@ -260,7 +260,7 @@ class CustomLogger:
         """
         self._logger.warning(msg, *args, **kwargs)
 
-    def error(self, msg, *args, **kwargs):
+    def error(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log an error message.
 
         Args:
@@ -271,7 +271,7 @@ class CustomLogger:
         """
         self._logger.error(msg, *args, **kwargs)
 
-    def critical(self, msg, *args, **kwargs):
+    def critical(self, msg: object, *args: object, **kwargs: object) -> None:
         """Log a critical message.
 
         Args:

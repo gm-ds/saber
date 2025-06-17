@@ -3,6 +3,7 @@
 import os
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 from jinja2 import Template, TemplateError
 
@@ -25,7 +26,7 @@ class Report:
 
     def __init__(
         self, path: Path, dict_results: dict, configuration: dict, Logger: LoggerLike
-    ):
+    ) -> None:
         """Initialize the Report instance.
 
         Args:
@@ -34,13 +35,16 @@ class Report:
             configuration (dict): Configuration dictionary containing test settings.
             Logger (LoggerLike): Logger instance for logging messages and errors.
 
+        Returns:
+            None
+
         """
         self.logger = Logger
         self.path = path
         self.saber_results = dict_results
         self.config = configuration
 
-    def _write_file(self, content):
+    def _write_file(self, content: str) -> None:
         """Write content to file using atomic operations.
 
         Attempts to write content atomically using temporary files to prevent
@@ -48,6 +52,9 @@ class Report:
 
         Args:
             content (str): The content to write to the file.
+
+        Returns:
+            None
 
         Raises:
             Exception: If file writing fails after all fallback attempts.
@@ -178,6 +185,10 @@ class Report:
 
         Creates a full HTML page report using the galaxy_template.html.j2 template.
         The page includes both the rendered summary table and the raw data in a single HTML.
+
+        Returns:
+            None
+
         """
         script_dir = os.path.dirname(os.path.abspath(__file__))
         template_path = os.path.join(script_dir, "templates", "galaxy_template.html.j2")
@@ -200,7 +211,7 @@ class Report:
         self.logger.info("HTML page rendering completed.")
         self._write_file(page_rendered_html)
 
-    def output_summary(self, standalone: bool):
+    def output_summary(self, standalone: bool) -> Optional[str]:
         """Generate an HTML summary table.
 
         Creates an HTML summary table using the table_summary.html.j2 template.
@@ -236,6 +247,7 @@ class Report:
         if standalone:
             self.logger.info("HTML table rendering completed.")
             self._write_file(rendered_html)
+            return None
         else:
             return rendered_html
 
