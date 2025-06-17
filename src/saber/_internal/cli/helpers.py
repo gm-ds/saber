@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Union
 
 from saber._internal.core import SecureConfig
-from saber._internal.utils.globals import ERR_CODE, TOOL_NAME
+from saber._internal.utils.globals import ERR_CODES, TOOL_NAME
 from saber.biolog import LoggerLike
 
 
@@ -32,7 +32,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
 
     Returns:
         Union[dict, int]: Configuration dictionary with loaded settings and config path
-                         on success, or ERR_CODE["path"] integer code on failure.
+                         on success, or ERR_CODES["path"] integer code on failure.
 
     Raises:
         ValueError: When configuration file format is invalid or encryption fails.
@@ -70,7 +70,7 @@ def _init_config(Logger: LoggerLike, parsed_args: Namespace) -> Union[dict, int]
 
     except (ValueError, PermissionError) as e:
         Logger.error(f"An error occurred with configuration: {e}")
-        return ERR_CODE["path"]
+        return ERR_CODES["path"]
 
 
 def _reports_helper(parsed_args: Namespace, Config: dict) -> dict:

@@ -18,9 +18,7 @@ Attributes:
 
 """
 
-example = """
-
----
+_example = """---
 usegalaxy_instances:
   - name: Main
     url: "usegalaxy.examples"  # Replace with the actual instance URL
@@ -49,5 +47,4 @@ timeout: 1200  # General timeout value, seconds
 clean_history: onsuccess # Default. Other values: "never", "always", "successful_only". The 
                             # last option removes all datasets of successful jobs and if all jobs
                             # are successful it clears the history (as "onsuccess")
-
 """
