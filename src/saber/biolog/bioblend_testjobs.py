@@ -237,7 +237,7 @@ class GalaxyTest:
 
         self.logger.info("Creating History...")
         self.history = self.history_client.create_history(name=history_name)
-        self.logger.info(f'         History ID: {self.history["id"]}')
+        self.logger.info(f"         History ID: {self.history['id']}")
 
     def _safe_delete_history(self, id: str, purge_bool: bool) -> None:
         """Safely delete a history, handling immutable histories.
@@ -282,7 +282,7 @@ class GalaxyTest:
             for history in self.history_client.get_histories():
                 if self.config.get("history_name") == history["name"] and purge_new:
                     self.logger.info(
-                        f'Purging History, ID: {history["id"]}, Name: {history["name"]}'
+                        f"Purging History, ID: {history['id']}, Name: {history['name']}"
                     )
                     self._safe_delete_history(history["id"], purge_bool=True)
                 create_time = self.history_client.show_history(
@@ -300,7 +300,7 @@ class GalaxyTest:
                     history_clean = self._clean_string(history.get("name"))
                     if config_clean in history_clean:
                         self.logger.info(
-                            f'Purging History, ID: {history["id"]}, Name: {history["name"]}'
+                            f"Purging History, ID: {history['id']}, Name: {history['name']}"
                         )
                         self._safe_delete_history(history["id"], purge_bool=True)
                         return
@@ -308,7 +308,7 @@ class GalaxyTest:
                     for word in history_words:
                         if config_clean == word:
                             self.logger.info(
-                                f'Purging History, ID: {history["id"]}, Name: {history["name"]}'
+                                f"Purging History, ID: {history['id']}, Name: {history['name']}"
                             )
                             self._safe_delete_history(history["id"], purge_bool=True)
                             return
@@ -359,7 +359,7 @@ class GalaxyTest:
         """Delete permanently the workflow uploaded for the test."""
         if self.wf is not None:
             self.gi.workflows.delete_workflow(self.wf["id"])
-            self.logger.info(f'Purging Workflow, ID: {self.wf["id"]}')
+            self.logger.info(f"Purging Workflow, ID: {self.wf['id']}")
 
     @staticmethod
     def _tool_id_split(tool_id: str) -> str:
@@ -396,7 +396,7 @@ class GalaxyTest:
 
         def job_completed() -> bool:
             """Check if all jobs in the invocation have completed.
-            
+
             Returns:
                 bool: True if all jobs are completed, False otherwise.
             """
@@ -445,9 +445,9 @@ class GalaxyTest:
         for job in jobs:
             if job:
                 if job["state"] in ["new", "queued", "running", "waiting"]:
-                    self.logger.info(f'Job {job["id"]} reached tool timeout:')
+                    self.logger.info(f"Job {job['id']} reached tool timeout:")
                     self.logger.info(
-                        f'         Tool: {self._tool_id_split(job["tool_id"])} Status: {job["state"]}'
+                        f"         Tool: {self._tool_id_split(job['tool_id'])} Status: {job['state']}"
                     )
                     self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
                     self.err_tracker = True
@@ -478,9 +478,9 @@ class GalaxyTest:
 
                 # Handle completion
                 elif job["exit_code"] == 0 or job["state"] == "ok":
-                    self.logger.info(f'Job {job["id"]} succeeded:')
+                    self.logger.info(f"Job {job['id']} succeeded:")
                     self.logger.info(
-                        f'         Tool: {self._tool_id_split(job["tool_id"])}'
+                        f"         Tool: {self._tool_id_split(job['tool_id'])}"
                     )
                     successful_jobs[job["id"]] = {
                         "INFO": self.gi.jobs.show_job(job["id"]),
@@ -495,7 +495,6 @@ class GalaxyTest:
                         self._add_tag(job["id"])
 
                 else:
-
                     # Handle failure
                     job_exit_code = (
                         job["exit_code"]
@@ -503,10 +502,10 @@ class GalaxyTest:
                         else "None"
                     )
                     self.logger.info(
-                        f'Job {job["id"]} failed (exit_code: {job_exit_code}):'
+                        f"Job {job['id']} failed (exit_code: {job_exit_code}):"
                     )
                     self.logger.info(
-                        f'         Tool: {self._tool_id_split(job["tool_id"])}'
+                        f"         Tool: {self._tool_id_split(job['tool_id'])}"
                     )
                     failed_jobs[job["id"]] = {
                         "INFO": self.gi.jobs.show_job(job["id"]),
@@ -544,7 +543,7 @@ class GalaxyTest:
         invocation = self.gi.workflows.invoke_workflow(
             self.wf["id"], inputs=workflow_input, history_id=self.history["id"]
         )
-        self.logger.info(f'Invocation id: {invocation["id"]}')
+        self.logger.info(f"Invocation id: {invocation['id']}")
 
         # Monitor the job using the previous function!
         self.logger.info("Waiting until test job finishes. Current state:")
@@ -568,9 +567,9 @@ class GalaxyTest:
             .get("preferences", {})
             .get("extra_user_preferences", {})
         )
-        new_prefs = json.loads(
-            prefs
-        ).copy()  # TODO: find a workaround to not use the json library only for this bit
+        new_prefs = (
+            json.loads(prefs).copy()
+        )  # TODO: find a workaround to not use the json library only for this bit
         new_prefs.update({"distributed_compute|remote_resources": p_endpoint})
         self.p_endpoint = p_endpoint
 
@@ -581,11 +580,15 @@ class GalaxyTest:
                 p_endpoint = "Default"
             self._update_log_context(name, p_endpoint)
             self.logger.info(
-                f"Switching to pulsar endpoint {p_endpoint} " f"from {name} instance"
+                f"Switching to pulsar endpoint {p_endpoint} from {name} instance"
             )
 
     def _wait_for_state(
-        self, check_function: Callable[[], bool], timeout: int, interval: int, error_msg: str
+        self,
+        check_function: Callable[[], bool],
+        timeout: int,
+        interval: int,
+        error_msg: str,
     ) -> bool | None:
         """Waits for a specific state to be reached by periodically checking.
 

@@ -2,7 +2,6 @@
 
 """Encryption command implementation for Saber tool."""
 
-
 from argparse import Namespace
 
 from saber._internal.core import SecureConfig

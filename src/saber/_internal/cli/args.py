@@ -12,13 +12,13 @@ from datetime import datetime
 from pathlib import Path
 
 HTML_DEFAULT = Path.home().joinpath(
-    f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html'
+    f"saber_report_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.html"
 )
 TABLE_DEFAULT = Path.home().joinpath(
-    f'saber_summary_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.html'
+    f"saber_summary_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.html"
 )
 MD_DEFAULT = Path.home().joinpath(
-    f'saber_report_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.md'
+    f"saber_report_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.md"
 )
 
 
@@ -293,12 +293,12 @@ class Parser:
 
     def val_safety_check(self) -> None:
         """Validates YAML file paths and resolves the log directory path.
-        
+
         Skips validation if example_settings is requested.
 
         Returns:
             None
-        
+
 
         Note:
             This method coordinates validation of different argument types and

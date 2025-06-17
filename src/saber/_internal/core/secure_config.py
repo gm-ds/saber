@@ -271,7 +271,6 @@ class SecureConfig:
             raise FileNotFoundError(f"Configuration file {self.config_path} not found")
 
         if not self.is_encrypted():
-
             # Read and validate the existing YAML file
             with open(self.config_path, "rb") as f:
                 yaml_data = f.read()
@@ -326,7 +325,6 @@ class SecureConfig:
             self._write_file(decrypted_data)
 
         else:
-
             return
 
     def _edit_save_config(self, config_data: any) -> None:
@@ -336,7 +334,7 @@ class SecureConfig:
             config_data (any): Configuration data.
 
         Returns:
-            None            
+            None
 
         Raises:
             ValueError: If encryption not initialized.

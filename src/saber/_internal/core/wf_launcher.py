@@ -92,7 +92,6 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
     exc = False
 
     for i in range(len(config["usegalaxy_instances"])):
-
         useg = dict(config["usegalaxy_instances"][i])
         copyconf = config.copy()
         copyconf.pop("usegalaxy_instances", None)
