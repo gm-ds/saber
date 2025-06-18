@@ -22,7 +22,7 @@ MD_DEFAULT = Path.home().joinpath(
 )
 
 
-class Parser:
+class _parser:
     """Command-line argument parser for the Saber testing tool.
 
     This class handles parsing and validation of command-line arguments. It supports
@@ -40,7 +40,7 @@ class Parser:
         mock_conf_path (str): Default path for configuration file.
 
     Example:
-        >>> parser = Parser("default_placeholder", "/path/to/config.yml")
+        >>> parser = _parser("default_placeholder", "/path/to/config.yml")
         >>> args = parser.arguments()
 
     """

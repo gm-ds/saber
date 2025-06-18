@@ -168,9 +168,9 @@ def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
         _config = _reports_helper(Parsed_Args, _config)
 
         # Execute the main workflow
-        from saber._internal.core import _wf_launcher
+        from saber._internal.core import wf_launcher
 
-        results = _wf_launcher(_config, Logger)
+        results = wf_launcher(_config, Logger)
 
         if isinstance(results, int):
             return results
@@ -182,30 +182,30 @@ def _launcher(Parsed_Args: Namespace, Logger: LoggerLike) -> int:
             rep_returns: list[int] = []
             try:
                 if Parsed_Args.html_report:
-                    from saber._internal.commands import _html_report
+                    from saber._internal.commands import html_report
 
                     rep_returns.append(
-                        _html_report(Parsed_Args, results[1], _config, Logger)
+                        html_report(Parsed_Args, results[1], _config, Logger)
                     )
 
                 if Parsed_Args.md_report:
-                    from saber._internal.commands import _md_report
+                    from saber._internal.commands import md_report
 
                     rep_returns.append(
-                        _md_report(Parsed_Args, results[1], _config, Logger)
+                        md_report(Parsed_Args, results[1], _config, Logger)
                     )
 
                 if Parsed_Args.table_html_report:
-                    from saber._internal.commands import _table_html_report
+                    from saber._internal.commands import table_html_report
 
                     rep_returns.append(
-                        _table_html_report(Parsed_Args, results[1], _config, Logger)
+                        table_html_report(Parsed_Args, results[1], _config, Logger)
                     )
 
                 if Parsed_Args.print_json:
-                    from saber._internal.commands import _print_json
+                    from saber._internal.commands import print_json
 
-                    rep_returns.append(_print_json(Parsed_Args, results[1]))
+                    rep_returns.append(print_json(Parsed_Args, results[1]))
 
             except Exception:
                 Logger.warning("The reports might not have been generated.")

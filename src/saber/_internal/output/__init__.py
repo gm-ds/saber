@@ -5,4 +5,6 @@ report generation in different formats like HTML and Markdown.
 
 """
 
-from saber._internal.output.reports import Report as Report
+from saber._internal.output.reports import _Report
+
+Report = _Report

@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
-class SecureConfig:
+class _SecureConfig:
     """A class for securely handling configuration files for a specific tool.
 
     The class manages configuration paths and provides encryption and decryption for sensitive configuration YAMLs.

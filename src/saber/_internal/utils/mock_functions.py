@@ -17,7 +17,7 @@ from saber._internal.utils.globals import TOOL_NAME
 
 
 # Mock Functions
-def mock_get_default_config_path() -> str:
+def _mock_get_default_config_path() -> str:
     """Get the default configuration file path for the current platform.
 
     This mock function determines the appropriate configuration file location

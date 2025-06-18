@@ -13,6 +13,8 @@ from saber._internal.utils.globals import (
     TOOL_NAME as TOOL_NAME,
     P as P,
 )
-from saber._internal.utils.mock_functions import (
-    mock_get_default_config_path as mock_get_default_config_path,
-)
+from saber._internal.utils.example_config import _example
+from saber._internal.utils.mock_functions import _mock_get_default_config_path
+
+example = _example
+mock_get_default_config_path = _mock_get_default_config_path

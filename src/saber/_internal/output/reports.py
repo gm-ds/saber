@@ -10,7 +10,7 @@ from jinja2 import Template, TemplateError
 from saber.biolog import LoggerLike
 
 
-class Report:
+class _Report:
     """Generate reports from Workflow results.
 
     This class handles the generation of various report formats (HTML, Markdown)

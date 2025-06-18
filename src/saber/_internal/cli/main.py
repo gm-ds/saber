@@ -62,16 +62,16 @@ def main() -> int:
     # Handle example settings generation (highest priority)
     if args.example_settings:
         # Import and execute example settings command
-        from saber._internal.commands import _example_settings
+        from saber._internal.commands import example_settings
 
-        return _example_settings()
+        return example_settings()
 
     # Handle file encryption operations
     if args.encrypt:
         # Import and execute encryption command
-        from saber._internal.commands import _encrypt
+        from saber._internal.commands import encrypt
 
-        return _encrypt(
+        return encrypt(
             logger,
             args,
         )
@@ -79,9 +79,9 @@ def main() -> int:
     # Handle file decryption operations
     elif args.decrypt:
         # Import and execute decryption command
-        from saber._internal.commands import _decrypt
+        from saber._internal.commands import decrypt
 
-        return _decrypt(
+        return decrypt(
             logger,
             args,
         )
@@ -89,15 +89,15 @@ def main() -> int:
     # Handle encrypted file editing operations
     elif args.edit:
         # Import and execute edit command
-        from saber._internal.commands import _edit
+        from saber._internal.commands import edit
 
-        return _edit(
+        return edit(
             logger,
             args,
         )
     # Default action: execute main workflow
     else:
         # Import and execute the main job launcher workflow
-        from saber._internal.cli import _launcher
+        from saber._internal.cli import launcher
 
-        return _launcher(args, logger)
+        return launcher(args, logger)

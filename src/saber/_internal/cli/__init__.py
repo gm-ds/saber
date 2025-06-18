@@ -21,7 +21,7 @@ Internal Components:
     in the public API, as they are intended for internal package use only.
 """
 
-from saber._internal.cli.args import Parser
+from saber._internal.cli.args import _parser as Parser
 
 from saber._internal.cli.main import main
 
