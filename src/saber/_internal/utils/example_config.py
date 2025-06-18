@@ -1,45 +1,24 @@
 #!/usr/bin/env python3
 
-import os
-from pathlib import Path
+"""Example configuration template for SABER.
 
+This module contains a template YAML configuration that demonstrates how to
+set up Galaxy instances, API keys, data inputs, and various timeout settings.
 
-#Globals variables
+The configuration template includes:
+    - Galaxy instance settings with API authentication
+    - Endpoint definitions for workflow execution
+    - Data input specifications with URLs and file types
+    - Timeout and polling interval configurations
 
-# Mock Functions
-def mock_get_default_config_path() -> str:
-    if os.name == 'nt':  # Windows
-        base_path = Path(os.environ.get('APPDATA', Path.home()))
-        config_dir = base_path / TOOL_NAME
-    elif os.name == 'posix':  # Linux/Unix/macOS
-        base_path = Path.home()
-        if os.path.exists('/Library'):  # macOS
-            config_dir = base_path / 'Library' / 'Application Support' / f'{TOOL_NAME}.yaml'
-        else:  # Linux/Unix
-            config_dir = base_path / '.config' / f'{TOOL_NAME}.yaml'
+Attributes:
+    _example (str): A multi-line YAML string containing the complete
+        configuration template with placeholder values and comments
+        explaining each section.
 
-    return str(config_dir)
+"""
 
-
-#Secure Config
-TOOL_NAME="saber"
-
-
-# Parser Defaults
-P = "place_holder"
-CONFIG_PATH = mock_get_default_config_path()
-
-# Exit Codes
-ERR_CODES = {"path": 1,
-               "api": 3,
-               "args":2,
-               "tto": 42,
-               "gal": 10,
-               "job": 42}
-
-# Example Config
-
-example = """---
+_example = """---
 usegalaxy_instances:
   - name: Main
     url: "usegalaxy.examples"  # Replace with the actual instance URL
@@ -68,5 +47,4 @@ timeout: 1200  # General timeout value, seconds
 clean_history: onsuccess # Default. Other values: "never", "always", "successful_only". The 
                             # last option removes all datasets of successful jobs and if all jobs
                             # are successful it clears the history (as "onsuccess")
-
 """

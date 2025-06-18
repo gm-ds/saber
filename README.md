@@ -1,67 +1,106 @@
 # SABER
- Systematic API Benchmark for (Pulsar) Endpoint Reliability
- 
->**:warning: Work in Progress**
->
->Use at your own risk.
 
-## CLI arguments
+**Systematic API Benchmark for (Pulsar) Endpoint Reliability**
 
-- `-p`, `--password`
-    Password for encrypting/decrypting the settings YAML file. Always required with `-e`, `-c`, `-d` and if the settings are encrypted.
+> ⚠️ **Warning**: This project is under active development. While functional, some features may still require refinement.
 
-- `-r`, `--html_report`
-    Generates an HTML report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.html
+## Overview
 
-- `-m`, `--md_report`
-    Generates a Markdown report. Accepts a custom file path. Default: ~/saber_report_YYYY-MM-DD_HH-MM-SS.md
+SABER is a tool for monitoring Pulsar endpoint reliability across Galaxy instances. It was developed to meet the practical challenges of managing distributed computing resources.
 
-- `-t`, `--table_html_report`
-    Generates an HTML summarized report in form of a table. Accepts a custom file path. Default: ~/saber_summary_YYYY-MM-DD_HH-MM-SS.html
+It provides: 
+* Workflow-based testing to simulate real usage conditions
+* Encrypted configuration management
+* HTML, Markdown, and summary tables reports
+* Detailed logging with syslog integration
 
-- `-l`, `--log_dir`
-    Generates the log file in the given directory. If a file path is given instead of a directory, the name of the file, without suffix, is used to make a new directory for `saber.log`.
+## Installation
 
-### Mutually Exclusive Group
+To install in development mode, clone this repository and navigate to the corresponding directory, then run:
 
-- `-e`, `--edit`
-    Opens and edits an encrypted YAML file (auto-encrypt after editing). It uses the editor defined in the EDITOR environment variable, if EDITOR is not set it will fallback on `nano`.
+```bash
+python3 -m venv venv
+. ./venv/bin/activate
+pip install -e .
+```
 
-- `-c`, `--encrypt`
-    Encrypts a given YAML file.
+## Quick Start
 
-- `-d`, `--decrypt`
-    Decrypts a given YAML file.
+```bash
+# Generate example configuration file
+saber -x > ~/.config/saber/settings.yaml
 
-- `-s`, `--settings`
-    Custom settings YAML file path. Default: `~/.config/saber/settings.yaml`
+# Edit the configuration with encryption
+saber -e ~/.config/saber/settings.yaml -p /path_to/password.txt
+# Alternative: set the SABER_PASSWORD environment variable
 
-- `-x`, `--example_settings`
-    Prints an example configuration.
+# Run tests and generate an HTML report
+saber -r ~/my_saber_report.html -p /path_to/password.txt
 
+# Alternative: output JSON to stdout
+saber -j -p /path_to/password.txt
+```
+
+## Usage
+
+SABER uses a command-line interface.
+
+### Basic Structure
+
+```bash
+saber [-h] [-p PASSWORD] [-j] [-r [PATH]] [-m [PATH]] [-t [PATH]] [-l LOG_DIRECTORY] [-e PATH | -c PATH | -d PATH | -s PATH | -x]
+```
+
+### Common Options
+
+* **-p, --password**: Required for encrypted configuration operations
+* **-r, --html\_report**: Generates an HTML report (`~/saber_report_TIMESTAMP.html` by default)
+* **-m, --md\_report**: Generates a Markdown report
+* **-t, --table\_html\_report**: Generates a summarized HTML table
+* **-l, --log\_dir**: Specifies log directory (default locations vary by privilege)
+* **-e, --edit**: Opens encrypted settings in `$EDITOR` (fallbacks to `nano`); re-encrypts on save
+* **-c, --encrypt**/**-d, --decrypt**: Encrypt or decrypt files
+* **-s, --settings**: Specify an alternate settings file
+* **-x, --example\_settings**: Output example configuration
 
 ## Configuration
-An example of configuration can be printed using the `-x` argument when launching the script, the same example can be found in the root of this repository. By default SABER will try to search for `~/.config/saber/settings.yaml` or `.yml`. If the file is not found it prints an error message.
 
-All variables under `usegalaxy_instances` will overwrite upper level values, leaving the possibility to tailor test jobs between Galaxy instances and Pulsar Endpoints.
-A workflow file is still needed.
+* **Location**: `~/.config/saber/settings.yaml` or overridden with `-s`
+* **Structure**: Supports hierarchical settings; instance-specific parameters override global defaults
+* **Key Parameters**:
 
-`maxwait` and `timeout` define how long SABER should wait for an upload or job execution to complete.
-`interval` and `sleep_time` specify the delay between status checks during uploads and job monitoring, respectively.
+  * `maxwait`: Upload/execution completion timeout
+  * `timeout`: General operation timeout
+  * `interval`: Delay between upload status checks
+  * `sleep_time`: Delay between job monitoring checks
+* **Workflow Requirement**: Workflow files (`.ga`) must be specified in the settings file
 
-## Logs
-SABER can be run as root, in that case the logs can be found in `/var/log/saber/saber.log` otherwhise in `~/.local/state/saber/log/saber.log`. For the path in other platforms check this [documentation](https://pypi.org/project/appdirs/). 
-The log is also added to syslog.
+## Logging
 
-A brief log example:
+* **Default locations**:
 
- ```
-2025-02-14 15:12:31,070 INFO     [usegalaxy@TBD] Updating pulsar endpoint in user preferences
-2025-02-14 15:12:31,210 INFO     [usegalaxy@Default] Testing pulsar endpoint Default from usegalaxy instance
-2025-02-14 15:13:14,173 INFO     [usegalaxy@example] Testing pulsar endpoint example from usegalaxy instance
+  * Root: `/var/log/saber/saber.log` (not recommended)
+  * User: `~/.local/state/saber/log/saber.log`
+* **Forwarded to**: syslog
+* **Format**:
+
 ```
-The Galaxy server being currently tested is displayed in brackets along with the pulsar endpoint. The `TBD` values is used during Galaxy Instance initialization. The `Default` endpoint correspond to the local compute of the server, it is used during dataset uploads.
+YYYY-MM-DD HH:MM:SS LEVEL [galaxy@endpoint] Message
+```
 
-## TODO
-- Improve errors handling
-- Clean jinja2 templates
+Example:
+
+```
+2025-02-14 15:12:31,070 INFO [usegalaxy@TBD] Updating pulsar endpoint in user preferences
+2025-02-14 15:12:31,210 INFO [usegalaxy@Default] Testing pulsar endpoint Default from usegalaxy instance
+2025-02-14 15:13:14,173 INFO [usegalaxy@example] Testing pulsar endpoint example from usegalaxy instance
+```
+
+The bracketed information identifies the Galaxy server and associated Pulsar endpoint being tested. `TBD` indicates Galaxy instance initialization phases, while `Default` represents the local compute endpoint utilized during dataset upload operations.
+
+## Development Status
+
+Active development. Priorities:
+
+* Template optimization
+* Error handling refinement
