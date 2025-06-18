@@ -22,8 +22,10 @@ Internal Components:
 """
 
 from saber._internal.cli.args import _parser as Parser
-
+from saber._internal.cli.helpers import _launcher
 from saber._internal.cli.main import main
+
+launcher = _launcher
 
 # Components available when importing this package
 __all__ = [
