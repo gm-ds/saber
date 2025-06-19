@@ -77,6 +77,7 @@ class GalaxyTest:
         self.logger.info("useGalaxy connection initialized")
         self.p_endpoint = ""
         self.err_tracker = False
+        self.tagged_jobs = []
 
         # Default configuration
         default_config = {
@@ -408,6 +409,7 @@ class GalaxyTest:
             all_jobs_completed = True
             for i in range(len(jobs)):
                 current_job = jobs[i]
+                self._add_tag(current_job["id"])
                 job_state = current_job["state"]
                 tool_id = self._tool_id_split(current_job.get("tool_id"))
                 self.logger.info(f"    {job_state}    Tool ID: {tool_id}")
@@ -641,17 +643,28 @@ class GalaxyTest:
         """
         job_outputs = self.gi.jobs.get_outputs(job_id)
         p_endpoint = self.p_endpoint
+        log = False
         if p_endpoint == "None":
             p_endpoint = "Default"
         tag_list = [p_endpoint]
         if msg_list and len(msg_list) > 0:
             tag_list.append(msg_list)
-        for output in job_outputs:
-            set_id = output["dataset"]["id"]
-            self.history_client.update_dataset(
-                history_id=self.history["id"], dataset_id=set_id, tags=tag_list
-            )
-        self.logger.info(f"Added tags: {tag_list} to job {job_id} outputs.")
+            for output in job_outputs:
+                set_id = output["dataset"]["id"]
+                self.history_client.update_dataset(
+                    history_id=self.history["id"], dataset_id=set_id, tags=tag_list
+                )
+                log = True
+        elif job_id not in self.tagged_jobs:
+            self.tagged_jobs.append(job_id)
+            for output in job_outputs:
+                set_id = output["dataset"]["id"]
+                self.history_client.update_dataset(
+                    history_id=self.history["id"], dataset_id=set_id, tags=tag_list
+                )
+                log = True
+        if log:
+            self.logger.info(f"Added tags: {tag_list} to job {job_id} outputs.")
 
     def _delete_job_out(self, job_id: str) -> None:
         """Delete all output datasets from a successful job.
