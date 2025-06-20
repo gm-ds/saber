@@ -4,7 +4,7 @@
 
 from typing import Union
 
-from saber.biolog import LoggerLike, WFPathError
+from saber.biolog import LoggerLike, WFPathError, WFInvocation
 
 from saber._internal.utils.globals import ERR_CODES
 
@@ -90,14 +90,14 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
     results = dict()
     conn_rr = False
     exc = False
+    try:
+        for i in range(len(config["usegalaxy_instances"])):
+            useg = dict(config["usegalaxy_instances"][i])
+            copyconf = config.copy()
+            copyconf.pop("usegalaxy_instances", None)
+            copyconf.update(useg)
+            useg = copyconf
 
-    for i in range(len(config["usegalaxy_instances"])):
-        useg = dict(config["usegalaxy_instances"][i])
-        copyconf = config.copy()
-        copyconf.pop("usegalaxy_instances", None)
-        copyconf.update(useg)
-        useg = copyconf
-        try:
             galaxy_instance = GalaxyTest(
                 useg["url"],
                 useg["api"],
@@ -131,53 +131,41 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
                     Logger.warning("Skipping to the next instance")
                 continue
 
-            for pe in useg["endpoints"]:
-                try:
-                    galaxy_instance.switch_pulsar(pe)
-                    compute_id = pe if pe != "None" else "Default"
+            try:
+                partial = dict()
+                partial = galaxy_instance.execute_and_monitor_workflow(
+                    workflow_input=input
+                )
 
-                    if useg["name"] not in results:
-                        results[useg["name"]] = {}
+                results = partial | results
 
-                    if compute_id not in results[useg["name"]]:
-                        results[useg["name"]][compute_id] = {
-                            "SUCCESSFUL_JOBS": {},
-                            "RUNNING_JOBS": {},
-                            "QUEUED_JOBS": {},
-                            "NEW_JOBS": {},
-                            "WAITING_JOBS": {},
-                            "FAILED_JOBS": {},
-                        }
+            except Exception as e:
+                Logger.warning(
+                    f"An error occurred while testing: {galaxy_instance.p_endpoint}"
+                )
+                Logger.warning(f"Error: {e}")
+                Logger.warning("Continuing...")
+                continue
 
-                    pre_results = galaxy_instance.execute_and_monitor_workflow(
-                        workflow_input=input
-                    )
-                    for key in [
-                        "SUCCESSFUL_JOBS",
-                        "RUNNING_JOBS",
-                        "FAILED_JOBS",
-                        "WAITING_JOBS",
-                        "QUEUED_JOBS",
-                        "NEW_JOBS",
-                    ]:
-                        if key in pre_results and isinstance(pre_results[key], dict):
-                            results[useg["name"]][compute_id][key].update(
-                                pre_results[key]
-                            )
+            except WFInvocation as e:
+                Logger.warning(
+                    f"An error occurred while invoking the workflow for {galaxy_instance.p_endpoint}"
+                )
+                Logger.warning(f"Error: {e}")
+                Logger.warning("Continuing...")
+                continue
 
-                except Exception as e:
-                    Logger.warning(f"An error occurred while testing {pe}:")
-                    Logger.warning(f"{e}")
-                    Logger.warning("Continuing...")
-
-                except ConnectionError as e:
-                    Logger.warning(f"A Connection error occurred while testing {pe}:")
-                    Logger.warning(f"{e}")
-                    Logger.warning("Continuing...")
+            except ConnectionError as e:
+                Logger.warning(
+                    f"A Connection error occurred while testing: {galaxy_instance.p_endpoint}"
+                )
+                Logger.warning(f"{e}")
+                Logger.warning("Continuing...")
+                continue
 
             try:
                 galaxy_instance.clean_up()
-                galaxy_instance.switch_pulsar(useg["default_compute_id"])
+                galaxy_instance.switch_pulsar(original_prefs=True)
 
             except Exception as e:
                 Logger.warning("An error occurred while cleaning up:")
@@ -189,36 +177,35 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
                 Logger.warning(f"{e}")
                 Logger.warning("Continuing...")
 
-            Logger.info("Test completed")
+        Logger.info("Test completed")
 
-            for g_name, g_data in results.items():
-                for com_id, job_data in g_data.items():
-                    for k in [
-                        "RUNNING_JOBS",
-                        "WAITING_JOBS",
-                        "QUEUED_JOBS",
-                        "NEW_JOBS",
-                    ]:
-                        if job_data.get(k):
-                            Logger.warning(
-                                f"Uncompleted jobs found in {g_name}/{com_id}."
-                            )
-                            Logger.warning(f"Exiting with code: {ERR_CODES['tto']}")
-                            if not conn_rr or not exc:
-                                return [ERR_CODES["tto"], results]
-                    if job_data.get("FAILED_JOBS"):
-                        Logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
-                        Logger.warning(f"Exiting with code: {ERR_CODES['job']}")
+        for g_name, g_data in results.items():
+            for com_id, job_data in g_data.items():
+                for k in [
+                    "RUNNING_JOBS",
+                    "WAITING_JOBS",
+                    "QUEUED_JOBS",
+                    "NEW_JOBS",
+                ]:
+                    if job_data.get(k):
+                        Logger.warning(f"Uncompleted jobs found in {g_name}/{com_id}.")
+                        Logger.warning(f"Exiting with code: {ERR_CODES['tto']}")
                         if not conn_rr or not exc:
-                            return [ERR_CODES["job"], results]
-            if conn_rr:
-                return [ERR_CODES["api"], results]
-            if exc:
-                return [ERR_CODES["gal"], results]
-            return [0, results]
+                            return [ERR_CODES["tto"], results]
+                if job_data.get("FAILED_JOBS"):
+                    Logger.warning(f"Failed jobs found in {g_name}/{com_id}.")
+                    Logger.warning(f"Exiting with code: {ERR_CODES['job']}")
+                    if not conn_rr or not exc:
+                        return [ERR_CODES["job"], results]
+        if conn_rr:
+            return [ERR_CODES["api"], results]
+        if exc:
+            return [ERR_CODES["gal"], results]
 
-        except KeyboardInterrupt:
-            Logger.warning("Test interrupted")
-            galaxy_instance.clean_up()
-            print("\n")
-            raise
+        return [0, results]
+
+    except KeyboardInterrupt:
+        Logger.warning("Test interrupted")
+        galaxy_instance.clean_up()
+        print("\n")
+        raise

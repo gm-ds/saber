@@ -68,16 +68,9 @@ class GalaxyTest:
         """
         # Initialize GalaxyInstance
         self.logger = Logger
-        self.gi = (
-            GalaxyInstance(url, email, gpassword)
-            if ((email is not None) and (gpassword is not None))
-            else GalaxyInstance(url, key)
-        )
-        self._update_log_context()
-        self.logger.info("useGalaxy connection initialized")
         self.p_endpoint = ""
         self.err_tracker = False
-        self.tagged_jobs = []
+        self.tagged_jobs = {}
 
         # Default configuration
         default_config = {
@@ -90,17 +83,29 @@ class GalaxyTest:
         }
         # Merge user-defined config with defaults
         self.config = {**default_config, **(config or {})}
+        self.pe_list = list(self.config["endpoints"])
         self.current_date = datetime.now().strftime("%-d/%-m/%y %H:%M")
         self.config["history_name"] = (
             f"{self.config.get('history_name', 'SABER')} {self.current_date}"
         )
+        self.gi = (
+            GalaxyInstance(url, email, gpassword)
+            if ((email is not None) and (gpassword is not None))
+            else GalaxyInstance(url, key)
+        )
+        self.user = self.gi.users.get_current_user()
+        self._update_log_context()
+        self.logger.info("useGalaxy connection initialized")
         self.history_client = HistoryClient(self.gi)
         self.history = None
         self.wf = None
+        self.invocation_ids = {}
+        for pe in self.pe_list:
+            if pe == "None":
+                pe = "Default"
+            self.tagged_jobs[pe] = []
 
-    def _update_log_context(
-        self, instance_name: str = "None", endpoint: str = "Default"
-    ) -> None:
+    def _update_log_context(self, endpoint: str = None, name: str = None) -> None:
         """Update the logging context with Galaxy instance and endpoint information.
 
         This method updates the contextual information that gets injected into
@@ -110,7 +115,7 @@ class GalaxyTest:
         different test environments.
 
         Args:
-            instance_name (str, optional): Name of the Galaxy instance being
+            name (str, optional): Name of the Galaxy instance being
                 used for logging context. Defaults to "None".
             endpoint (str, optional): Endpoint associated with the Galaxy
                 instance at that moment (e.g., Pulsar endpoint). Defaults to "Default".
@@ -119,8 +124,12 @@ class GalaxyTest:
             None
 
         """
+        name = self.config.get("name", "None") if name is None else name
+        if endpoint == "None" or endpoint is None:
+            endpoint = "Default"
+        self.p_endpoint = endpoint
         if isinstance(self.logger, CustomLogger):
-            self.logger.update_log_context(instance_name, endpoint)
+            self.logger.update_log_context(instance_name=name, endpoint=endpoint)
 
     def test_job_set_up(
         self,
@@ -148,7 +157,9 @@ class GalaxyTest:
         local = self.config.get("local_upload", True) if local is None else local
 
         if local:
-            self.switch_pulsar(self.config["default_compute_id"], self.config["name"])
+            self.switch_pulsar(
+                self.config["default_compute_id"], name=self.config["name"]
+            )
         self._create_history()
         self._upload_workflow()
         inputs_dict = inputs_data
@@ -379,34 +390,40 @@ class GalaxyTest:
             return tool_id
 
     def _monitor_job_status(
-        self, invocation_id: str, timeout: int = None, sleep_time: int = None
+        self, timeout: int = None, sleep_time: int = None, wait_for_inv: str = None
     ) -> dict:
         """Monitor the status of a job invocation.
 
         Args:
             invocation_id (str): The ID of the workflow invocation to monitor
-            timeout (int, optional): Maximum time (in seconds) to wait. Defaults to 12000s
+            timeout (int, optional): Maximum time (in seconds) to wait. Defaults to 12000s. It is halfed for initial job start.
             sleep_time (int, optional): Time between status checks. Defaults to 5s
+            wait_for_inv (str, optional): If not None, waits for all jobs to start before checking completion. Defaults to None.
 
         Returns:
-            dict: Dictionary containing the final job status
+            None
 
         """
         sleep_time = self.config["sleep_time"] if sleep_time is None else sleep_time
         timeout = self.config["timeout"] if timeout is None else timeout
+        pe_list = self.pe_list.copy()
+        terminal_state_job: list[str] = []
 
-        def job_completed() -> bool:
-            """Check if all jobs in the invocation have completed.
+        def all_jobs_started() -> bool:
+            """Check if all jobs in the invocation have progressed beyond initial states.
 
             Returns:
-                bool: True if all jobs are completed, False otherwise.
+                bool: True if all jobs have states different from empty string or "new", False otherwise.
             """
+            pe = wait_for_inv
+            self._update_log_context(endpoint=pe)
+
             # Get job status
-            jobs = self.gi.jobs.get_jobs(invocation_id=invocation_id)
+            jobs = self.gi.jobs.get_jobs(invocation_id=self.invocation_ids.get(pe, ""))
             if not jobs:
                 return False
 
-            all_jobs_completed = True
+            all_jobs_started = True
             for i in range(len(jobs)):
                 current_job = jobs[i]
                 self._add_tag(current_job["id"])
@@ -415,19 +432,68 @@ class GalaxyTest:
                 self.logger.info(f"    {job_state}    Tool ID: {tool_id}")
 
                 # Continue monitoring
-                if job_state not in ["ok", "error"]:
-                    all_jobs_completed = False
+                if job_state not in ["ok", "error", "running", "queued", "waiting"]:
+                    all_jobs_started = False
+
+            return all_jobs_started
+
+        def job_completed() -> bool:
+            """Check if all jobs in multiple invocation have completed.
+
+            Returns:
+                bool: True if all jobs are completed, False otherwise.
+            """
+            all_jobs_completed = True  # N.B.:Needs to be outside the outer loop or it will give false negatives
+            for pe in pe_list.copy():
+                self._update_log_context(endpoint=pe)
+
+                # Get job status
+                jobs = self.gi.jobs.get_jobs(
+                    invocation_id=self.invocation_ids.get(pe, "")
+                )
+                if not jobs:
+                    return False
+
+                one_inv_completed = True
+                for i in range(len(jobs)):
+                    current_job = jobs[i]
+                    job_state = current_job["state"]
+                    if current_job["id"] not in terminal_state_job:
+                        tool_id = self._tool_id_split(current_job.get("tool_id"))
+                        self.logger.info(f"    {job_state}    Tool ID: {tool_id}")
+                        self._add_tag(current_job["id"])
+                    if job_state in ["ok", "error"]:
+                        terminal_state_job.append(current_job["id"])
+                    # Continue monitoring
+                    if job_state not in ["ok", "error"]:
+                        one_inv_completed = False
+                        all_jobs_completed = False
+
+                if one_inv_completed:
+                    pe_list.remove(pe)
 
             return all_jobs_completed
 
-        self._wait_for_state(
-            job_completed, timeout, sleep_time, f"Timeout {timeout}s expired."
-        )
-
-        return self.gi.jobs.get_jobs(invocation_id=invocation_id)
+        if wait_for_inv is not None:
+            self.logger.info(
+                "Waiting until test jobs start before invoking additional ones. Current state:"
+            )
+            timeout = min(600, timeout)  # Reduce timeout for initial job start
+            sleep_time = min(sleep_time, 5)
+            self._wait_for_state(
+                all_jobs_started,
+                timeout,
+                sleep_time,
+                f"Not all jobs started in {timeout}s.",
+            )
+        else:
+            self.logger.info("Waiting until test jobs finish. Current states:")
+            self._wait_for_state(
+                job_completed, timeout, sleep_time, f"Timeout {timeout}s expired."
+            )
 
     def _handle_job_completion(
-        self, jobs: list[dict[str, any]]
+        self
     ) -> dict[dict[dict[list[dict[str, any]]]]]:
         """Job completion handler. Changes History name in case of failures.
 
@@ -438,93 +504,114 @@ class GalaxyTest:
             dict: Dictionary containing successful, timeout and failed jobs with their details
 
         """
-        running_jobs = {}
-        queued_jobs = {}
-        new_jobs = {}
-        waiting_jobs = {}
-        successful_jobs = {}
-        failed_jobs = {}
-        for job in jobs:
-            if job:
-                if job["state"] in ["new", "queued", "running", "waiting"]:
-                    self.logger.info(f"Job {job['id']} reached tool timeout:")
-                    self.logger.info(
-                        f"         Tool: {self._tool_id_split(job['tool_id'])} Status: {job['state']}"
-                    )
-                    self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
-                    self.err_tracker = True
-                    if job["state"] == "running":
-                        running_jobs[job["id"]] = {
-                            "INFO": self.gi.jobs.show_job(job["id"]),
-                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                        }
-                    if job["state"] == "new":
-                        new_jobs[job["id"]] = {
-                            "INFO": self.gi.jobs.show_job(job["id"]),
-                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                        }
-                    if job["state"] == "queued":
-                        queued_jobs[job["id"]] = {
-                            "INFO": self.gi.jobs.show_job(job["id"]),
-                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                        }
-                    if job["state"] == "waiting":
-                        waiting_jobs[job["id"]] = {
-                            "INFO": self.gi.jobs.show_job(job["id"]),
-                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                        }
+        return_values = {}
+        if self.config["name"] not in return_values:
+            return_values[self.config["name"]] = {}
+        for pe in self.pe_list:
+            self._update_log_context(endpoint=pe)
+            compute_id = pe if pe != "None" else "Default"
 
-                # Handle completion
-                elif job["exit_code"] == 0 or job["state"] == "ok":
-                    self.logger.info(f"Job {job['id']} succeeded:")
-                    self.logger.info(
-                        f"         Tool: {self._tool_id_split(job['tool_id'])}"
-                    )
-                    successful_jobs[job["id"]] = {
-                        "INFO": self.gi.jobs.show_job(job["id"]),
-                        "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                    }
-                    if (
-                        self.config.get("clean_history", "onsuccess")
-                        == "successful_only"
-                    ):
-                        self._delete_job_out(job["id"])
+            if compute_id not in return_values[self.config["name"]]:
+                return_values[self.config["name"]][compute_id] = {}
+                for key in [
+                    "SUCCESSFUL_JOBS",
+                    "RUNNING_JOBS",
+                    "QUEUED_JOBS",
+                    "NEW_JOBS",
+                    "WAITING_JOBS",
+                    "FAILED_JOBS",
+                ]:
+                    return_values[self.config["name"]][compute_id][key] = {}
+
+
+            if self.invocation_ids.get(pe) in self.invocation_ids.values():
+                jobs = self.gi.jobs.get_jobs(invocation_id=self.invocation_ids[pe])
+
+
+            for job in jobs:
+                if job:
+                    if job["state"] in ["new", "queued", "running", "waiting"]:
+                        self.logger.info(f"Job {job['id']} reached tool timeout:")
+                        self.logger.info(
+                            f"         Tool: {self._tool_id_split(job['tool_id'])} Status: {job['state']}"
+                        )
+                        self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
+                        self.err_tracker = True
+                        if job["state"] == "running":
+                            return_values[self.config["name"]][compute_id][
+                                "RUNNING_JOBS"
+                            ][job["id"]] = {
+                                "INFO": self.gi.jobs.show_job(job["id"]),
+                                "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                                "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                            }
+                        if job["state"] == "new":
+                            return_values[self.config["name"]][compute_id]["NEW_JOBS"][
+                                job["id"]
+                            ] = {
+                                "INFO": self.gi.jobs.show_job(job["id"]),
+                                "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                                "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                            }
+                        if job["state"] == "queued":
+                            return_values[self.config["name"]][compute_id][
+                                "QUEUED_JOBS"
+                            ][job["id"]] = {
+                                "INFO": self.gi.jobs.show_job(job["id"]),
+                                "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                                "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                            }
+                        if job["state"] == "waiting":
+                            return_values[self.config["name"]][compute_id][
+                                "WAITING_JOBS"
+                            ][job["id"]] = {
+                                "INFO": self.gi.jobs.show_job(job["id"]),
+                                "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                                "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                            }
+
+                    # Handle completion
+                    elif job["exit_code"] == 0 or job["state"] == "ok":
+                        self.logger.info(f"Job {job['id']} succeeded:")
+                        self.logger.info(
+                            f"         Tool: {self._tool_id_split(job['tool_id'])}"
+                        )
+                        return_values[self.config["name"]][compute_id][
+                            "SUCCESSFUL_JOBS"
+                        ][job["id"]] = {
+                            "INFO": self.gi.jobs.show_job(job["id"]),
+                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                        }
+                        if (
+                            self.config.get("clean_history", "onsuccess")
+                            == "successful_only"
+                        ):
+                            self._delete_job_out(job["id"])
+                        else:
+                            self._add_tag(job["id"])
+
                     else:
-                        self._add_tag(job["id"])
-
-                else:
-                    # Handle failure
-                    job_exit_code = (
-                        job["exit_code"]
-                        if job and job["exit_code"] is not None
-                        else "None"
-                    )
-                    self.logger.info(
-                        f"Job {job['id']} failed (exit_code: {job_exit_code}):"
-                    )
-                    self.logger.info(
-                        f"         Tool: {self._tool_id_split(job['tool_id'])}"
-                    )
-                    failed_jobs[job["id"]] = {
-                        "INFO": self.gi.jobs.show_job(job["id"]),
-                        "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
-                        "METRICS": self.gi.jobs.get_metrics(job["id"]),
-                    }
-                    self._add_tag(job["id"], msg_list="err")
-                    self.err_tracker = True
-
-        return_values = {
-            "SUCCESSFUL_JOBS": successful_jobs,
-            "RUNNING_JOBS": running_jobs,
-            "QUEUED_JOBS": queued_jobs,
-            "NEW_JOBS": new_jobs,
-            "WAITING_JOBS": waiting_jobs,
-            "FAILED_JOBS": failed_jobs,
-        }
+                        # Handle failure
+                        job_exit_code = (
+                            job["exit_code"]
+                            if job and job["exit_code"] is not None
+                            else "None"
+                        )
+                        self.logger.info(
+                            f"Job {job['id']} failed (exit_code: {job_exit_code}):"
+                        )
+                        self.logger.info(
+                            f"         Tool: {self._tool_id_split(job['tool_id'])}"
+                        )
+                        return_values[self.config["name"]][compute_id]["FAILED_JOBS"][
+                            job["id"]
+                        ] = {
+                            "INFO": self.gi.jobs.show_job(job["id"]),
+                            "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
+                            "METRICS": self.gi.jobs.get_metrics(job["id"]),
+                        }
+                        self._add_tag(job["id"], msg_list="err")
+                        self.err_tracker = True
         return return_values
 
     def execute_and_monitor_workflow(
@@ -541,46 +628,61 @@ class GalaxyTest:
 
         """
         timeout = self.config["timeout"] if timeout is None else timeout
-        # Workflow invocation
-        invocation = self.gi.workflows.invoke_workflow(
-            self.wf["id"], inputs=workflow_input, history_id=self.history["id"]
-        )
-        self.logger.info(f"Invocation id: {invocation['id']}")
+        for pe in self.pe_list:
+            self.switch_pulsar(pe)
+
+            try:
+                # Workflow invocation
+                invocation = self.gi.workflows.invoke_workflow(
+                    self.wf["id"], inputs=workflow_input, history_id=self.history["id"]
+                )
+            except WFInvocation as e:
+                self.logger.warning(f"Error invoking workflow for {pe}.")
+                self.logger.error(f"Error: {e}")
+                continue
+            except ConnectionError as e:
+                self.logger.warning(f"Connection Error invoking workflow for {pe}: {e}")
+                self.logger.error(f"Connection Error: {e}")
+                continue
+
+            self.invocation_ids[pe] = invocation["id"]
+            self.logger.info(f"Invocation id: {self.invocation_ids[pe]}")
+            self._monitor_job_status(wait_for_inv=pe)
 
         # Monitor the job using the previous function!
-        self.logger.info("Waiting until test job finishes. Current state:")
-        final_job_status = self._monitor_job_status(invocation["id"], timeout)
+        self._monitor_job_status()
 
         # Handle job completion
-        return self._handle_job_completion(final_job_status)
+        return self._handle_job_completion()
 
-    def switch_pulsar(self, p_endpoint: str, name: str = None) -> None:
+    def switch_pulsar(
+        self, p_endpoint: str = None, name: str = None, original_prefs: bool = False
+    ) -> None:
         """Switches to a different Pulsar endpoint for processing.
 
         Args:
-            p_endpoint (str): The Pulsar endpoint to switch to
+            p_endpoint (str, Optional): The Pulsar endpoint to switch to, defaults to default_compute_id in config.
             name (str, optional): Name for the Pulsar instance. Defaults to config value
+            original_prefs (bool, optional): If True, restores preferences. Defaults to False.
 
         """
         name = self.config["name"] if name is None else name
-        user_id = self.gi.users.get_current_user()["id"]
-        prefs = (
-            self.gi.users.get_current_user()
-            .get("preferences", {})
-            .get("extra_user_preferences", {})
-        )
-        new_prefs = (
-            json.loads(prefs).copy()
-        )  # TODO: find a workaround to not use the json library only for this bit
-        new_prefs.update({"distributed_compute|remote_resources": p_endpoint})
-        self.p_endpoint = p_endpoint
+        p_endpoint = self.config["default_compute_id"] if p_endpoint is None else p_endpoint
+        prefs = self.user.get("preferences", {}).copy()
+        extra_prefs = prefs.get("extra_user_preferences", "{}")
+        new_prefs = json.loads(extra_prefs).copy()
+
+        if not original_prefs:
+            # TODO: find a workaround to not use the json library only for this bit
+            new_prefs.update({"distributed_compute|remote_resources": p_endpoint})
+        else:
+            new_prefs = json.loads(extra_prefs).copy()
 
         if prefs != new_prefs:
             self.logger.info("Updating pulsar endpoint in user preferences")
-            self.gi.users.update_user(user_id=user_id, user_data=new_prefs)
-            if p_endpoint == "None":
-                p_endpoint = "Default"
-            self._update_log_context(name, p_endpoint)
+            self.gi.users.update_user(user_id=self.user["id"], user_data=new_prefs)
+            p_endpoint = new_prefs.get("distributed_compute|remote_resources") if original_prefs else p_endpoint
+            self._update_log_context(endpoint=p_endpoint)
             self.logger.info(
                 f"Switching to pulsar endpoint {p_endpoint} from {name} instance"
             )
@@ -655,8 +757,8 @@ class GalaxyTest:
                     history_id=self.history["id"], dataset_id=set_id, tags=tag_list
                 )
                 log = True
-        elif job_id not in self.tagged_jobs:
-            self.tagged_jobs.append(job_id)
+        elif job_id not in self.tagged_jobs[p_endpoint]:
+            self.tagged_jobs[p_endpoint].append(job_id)
             for output in job_outputs:
                 set_id = output["dataset"]["id"]
                 self.history_client.update_dataset(
@@ -696,6 +798,25 @@ class WFPathError(Exception):
 
     def __init__(self, message: str) -> None:
         """Initialize WFPathError with an error message.
+
+        Args:
+            message (str): Explanation of the error
+
+        """
+        self.message = message
+        super().__init__(self.message)
+
+
+class WFInvocation(Exception):
+    """Exception raised for errors during workflow invocations.
+
+    Attributes:
+        message (str): Explanation of the error
+
+    """
+
+    def __init__(self, message: str) -> None:
+        """Initialize WFInvocation with an error message.
 
         Args:
             message (str): Explanation of the error

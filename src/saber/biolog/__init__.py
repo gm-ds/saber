@@ -25,7 +25,7 @@ Example:
 """
 
 from saber.biolog.logger import CustomLogger
-from saber.biolog.bioblend_testjobs import GalaxyTest, WFPathError
+from saber.biolog.bioblend_testjobs import GalaxyTest, WFPathError, WFInvocation
 from saber.biolog.loglike import LoggerLike
 
 __all__ = ["CustomLogger", "GalaxyTest", "WFPathError", "LoggerLike"]
