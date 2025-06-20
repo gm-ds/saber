@@ -47,4 +47,6 @@ timeout: 1200  # General timeout value, seconds
 clean_history: onsuccess # Default. Other values: "never", "always", "successful_only". The 
                             # last option removes all datasets of successful jobs and if all jobs
                             # are successful it clears the history (as "onsuccess")
+delete_after: 5 # Number of days after which histories are deleted, defaults to 5 days.
+date_string: "A message displayed inside the reports"
 """
