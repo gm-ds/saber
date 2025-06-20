@@ -57,6 +57,7 @@ saber [-h] [-p PASSWORD] [-j] [-r [PATH]] [-m [PATH]] [-t [PATH]] [-l LOG_DIRECT
 * **-r, --html\_report**: Generates an HTML report (`~/saber_report_TIMESTAMP.html` by default)
 * **-m, --md\_report**: Generates a Markdown report
 * **-t, --table\_html\_report**: Generates a summarized HTML table
+* **-j, --print\_json**: Prints results in JSON format to stdout
 * **-l, --log\_dir**: Specifies log directory (default locations vary by privilege)
 * **-e, --edit**: Opens encrypted settings in `$EDITOR` (fallbacks to `nano`); re-encrypts on save
 * **-c, --encrypt**/**-d, --decrypt**: Encrypt or decrypt files
