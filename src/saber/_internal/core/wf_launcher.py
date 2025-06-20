@@ -14,16 +14,16 @@ from saber.biolog import GalaxyTest
 def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
     """Launch and monitor workflow tests across multiple Galaxy instances and compute endpoints.
 
-    This function iterates through configured Galaxy instances, sets up test workflows
+    This function iterates through configured Galaxy instances, sets up test workflows from files
     for each instance, executes tests across all specified compute endpoints, monitors
-    job execution and collects results, and handles cleanup and error conditions.
+    job execution and collects results, and handles cleanup and some error conditions.
 
     Args:
         config (dict): Dictionary containing test configuration with the following keys:
             - usegalaxy_instances: List of Galaxy instance configurations
             - endpoints: List of compute endpoints to test
-            - Other configuration parameters
-        Logger (LoggerLike): Logger instance for output and error reporting.
+            - Other configuration parameters (see `saber -x` command for details)
+        Logger (LoggerLike): Logger instance for output and error reporting, use the `CustomLogger` class to have more details during execution.
 
     Returns:
         Union[int, list]: Test execution result in one of two formats:
@@ -82,6 +82,7 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
 
     Raises:
         WFPathError: If workflow files are not accessible.
+        WFInvocation: If workflow invocation encounters issues.
         KeyboardInterrupt: If user interrupts execution.
         ConnectionError: If connection errors occur with usegalaxy.* instances.
         Exception: For other unexpected errors during execution.
@@ -98,14 +99,7 @@ def _wf_launcher(config: dict, Logger: LoggerLike) -> Union[int, list]:
             copyconf.update(useg)
             useg = copyconf
 
-            galaxy_instance = GalaxyTest(
-                useg["url"],
-                useg["api"],
-                useg.get("email", None),
-                useg.get("password", None),
-                useg,
-                Logger,
-            )
+            galaxy_instance = GalaxyTest(useg, Logger)
 
             try:
                 input = galaxy_instance.test_job_set_up()

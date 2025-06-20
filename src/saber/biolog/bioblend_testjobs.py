@@ -16,49 +16,79 @@ from saber.biolog.logger import CustomLogger
 
 
 class GalaxyTest:
-    """Creates a GalaxyInstance using bioblend, and logs operations with a custom logger.
+    """Creates a GalaxyInstance using BioBlend, and logs operations with a custom logger.
 
     Both API and mail/password are supported. Sets some defaults if not present in the dict passed
     for initialization.
 
     Args:
-        url (str): API key of a usegalaxy instance, has precedence over mail and password
-        email (str, optional): To be used along the password of the account
-        gpassword (str, optional): To be used along the email of the account
-        config (dict, optional): Dictionary containing everything needed for the test jobs excluding the workflow
-        class_logger (Any, optional): Logger instance used by the class.
+        config (dict, optional): User-defined configuration options to override defaults.
+        Logger (LoggerLike, optional): Logger instance for logging messages. Defaults to None.
+        **kwargs (dict): Key-value pairs to be passed instead of config.
 
     """
 
+    REQUIRED = object()
+    # Default configuration values
+    api: str = None
+    clean_history: str = "onsuccess"
+    config_path: str = None
+    data_inputs: dict | object = REQUIRED
+    default_compute_id: str | object = REQUIRED
+    delete_after: float = 5
+    email: str = None
+    endpoints: list | object = REQUIRED
+    ga_path: str = REQUIRED
+    history_name: str = "SABER"
+    local_upload: bool = True
+    interval: int = 5
+    maxwait: int = 12000
+    name: str | object = REQUIRED
+    password: str = None
+    sleep_time: int = 5
+    timeout: int = 12000
+    url: str | object = REQUIRED
+
     def __init__(
-        self,
-        url: str,
-        key: str,
-        email: str = None,
-        gpassword: str = None,
-        config: dict = None,
-        Logger: LoggerLike = None,
+        self, config: dict = None, Logger: LoggerLike = None, **kwargs: dict
     ) -> None:
         """Initializes a bioblend Galaxy instance and sets up configuration for job management.
 
         Args:
-            url (str): The URL of the Galaxy server.
-            key (str): The API key for Galaxy authentication (used if email and gpassword are not provided).
-            email (str, optional): The email address for Galaxy authentication. Defaults to None.
-            gpassword (str, optional): The password for Galaxy authentication. Defaults to None.
-            config (dict, optional): User-defined configuration options to override defaults. Defaults to None.
+            config (dict, optional): User-defined configuration options to override defaults.
             Logger (LoggerLike, optional): Logger instance for logging messages. Defaults to None.
+            **kwargs (dict): Key-value pairs to be passed instead of config.
 
         Attributes:
+            REQUIRED (object): Sentinel object for required fields
+            api (str): API key for Galaxy instance
+            clean_history (str): History cleanup policy, defaults to "onsuccess"
+            config_path (str): Path to the configuration file
+            data_inputs (dict | object): Input data for the workflow, must be provided
+            default_compute_id (str | object): Default compute endpoint ID, must be provided
+            delete_after (float): Time in days to keep histories before deletion, defaults to 5
+            email (str): Email for Galaxy user, defaults to None
+            endpoints (list | object): List of compute endpoints to test, must be provided
+            ga_path (str | object): Path to the workflow file, must be provided
+            history_name (str): Name for the Galaxy history, defaults to "SABER"
+            local_upload (bool): Whether to use local upload, defaults to True
+            interval (int): Interval between status checks, defaults to 5 seconds
+            maxwait (int): Maximum wait time for uploads, defaults to 12000 seconds
+            name (str | object): Name of the Galaxy instance, must be provided
+            password (str): Password for Galaxy user, defaults to None
+            sleep_time (int): Sleep time between checks, defaults to 5 seconds
+            timeout (int): Maximum time to wait for job completion, defaults to 12000 seconds
+            url (str | object): URL of the Galaxy instance, must be provided
             logger: Logger instance for logging.
             gi: GalaxyInstance object for interacting with the Galaxy server.
             p_endpoint (str): Placeholder for endpoint information.
             err_tracker (bool): Error tracking flag.
-            config (dict): Merged configuration dictionary.
             current_date (str): Current date and time string for history naming.
             history_client (HistoryClient): Client for managing Galaxy histories.
             history: Placeholder for the current Galaxy history.
             wf: Placeholder for the current workflow.
+            invocation_ids (dict): Dictionary to store invocation IDs for each endpoint.
+            tagged_jobs (dict): Dictionary to store tagged jobs for each endpoint.
 
         Returns:
             None
@@ -66,32 +96,22 @@ class GalaxyTest:
         Raises:
             None
         """
+        if config and kwargs:
+            raise ValueError("Pass either 'config' or keyword arguments, not both.")
+        config = config or kwargs
         # Initialize GalaxyInstance
         self.logger = Logger
         self.p_endpoint = ""
         self.err_tracker = False
         self.tagged_jobs = {}
 
-        # Default configuration
-        default_config = {
-            "sleep_time": 5,
-            "maxwait": 12000,
-            "interval": 5,
-            "timeout": 12000,
-            "history_name": "SABER",
-            "clean_history": "onsuccess",
-        }
-        # Merge user-defined config with defaults
-        self.config = {**default_config, **(config or {})}
-        self.pe_list = list(self.config["endpoints"])
         self.current_date = datetime.now().strftime("%-d/%-m/%y %H:%M")
-        self.config["history_name"] = (
-            f"{self.config.get('history_name', 'SABER')} {self.current_date}"
-        )
+        self._load_validated_config(config)
+        self.history_name = f"{self.history_name} {self.current_date}"
         self.gi = (
-            GalaxyInstance(url, email, gpassword)
-            if ((email is not None) and (gpassword is not None))
-            else GalaxyInstance(url, key)
+            GalaxyInstance(self.url, self.email, self.password)
+            if ((self.email is not None) and (self.password is not None))
+            else GalaxyInstance(self.url, self.api)
         )
         self.user = self.gi.users.get_current_user()
         self._update_log_context()
@@ -100,7 +120,7 @@ class GalaxyTest:
         self.history = None
         self.wf = None
         self.invocation_ids = {}
-        for pe in self.pe_list:
+        for pe in self.endpoints:
             if pe == "None":
                 pe = "Default"
             self.tagged_jobs[pe] = []
@@ -124,7 +144,7 @@ class GalaxyTest:
             None
 
         """
-        name = self.config.get("name", "None") if name is None else name
+        name = self.name if name is None else name
         if endpoint == "None" or endpoint is None:
             endpoint = "Default"
         self.p_endpoint = endpoint
@@ -140,6 +160,12 @@ class GalaxyTest:
     ) -> dict:
         """Sets up new histories and upload workflows.
 
+        This method prepares the Galaxy instance for testing, first checking whether to upload
+        datasets locally or through a Pulsar endpoint. It creates an empty history, and uploads
+        the workflow file specified in the configuration.
+        After the workflow is uploaded, it creates the workflow inputs ands uploads the datasets.
+        The datasets statuses are monitored during upload.
+
         Args:
             inputs_data (dict, optional): Dictionary with the inputs for the workflow
             maxwait (int, optional): Maximum wait, in seconds, during upload of the datasets. Defaults to 12000
@@ -151,15 +177,13 @@ class GalaxyTest:
             dict: Dictionary containing the workflow inputs
 
         """
-        inputs_data = self.config["data_inputs"] if inputs_data is None else inputs_data
-        interval = self.config["interval"] if interval is None else interval
-        maxwait = self.config["maxwait"] if maxwait is None else maxwait
-        local = self.config.get("local_upload", True) if local is None else local
+        inputs_data = self.data_inputs if inputs_data is None else inputs_data
+        interval = self.interval if interval is None else interval
+        maxwait = self.maxwait if maxwait is None else maxwait
+        local = self.local_upload if local is None else local
 
         if local:
-            self.switch_pulsar(
-                self.config["default_compute_id"], name=self.config["name"]
-            )
+            self.switch_pulsar(self.default_compute_id, name=self.name)
         self._create_history()
         self._upload_workflow()
         inputs_dict = inputs_data
@@ -189,6 +213,8 @@ class GalaxyTest:
     def _wait_for_dataset(self, maxtime: int = None, interval: int = 5) -> bool:
         """Wait for dataset upload.
 
+        This method iterates a helper function to check if all datasets are in a terminal state.
+
         Args:
             maxtime (int, optional): Maximum time to wait. Defaults to config value.
             interval (int, optional): Interval between checks. Defaults to 5.
@@ -197,12 +223,12 @@ class GalaxyTest:
             bool: True if datasets are ready, False if timeout occurred
 
         """
-        maxtime = self.config["maxwait"] if maxtime is None else maxtime
+        maxtime = self.maxwait if maxtime is None else maxtime
         dataset_client = datasets.DatasetClient(self.gi)
         all_datasets = dataset_client.get_datasets(history_id=self.history["id"])
 
         def check_dataset_ready() -> bool:
-            """Check if datasets are ready for processing.
+            """Check if datasets are in terminal state.
 
             Returns:
                 bool: True if all datasets are in terminal state, False otherwise.
@@ -236,14 +262,14 @@ class GalaxyTest:
     def _create_history(self, history_name: str = None) -> None:
         """Create a new History.
 
-        Deletes permanently older histories (>1 week) to ensure enough space.
+        Deletes permanently older histories to ensure enough space.
 
         Args:
             history_name (str, optional): Defaults to "Pulsar Endpoints Test"
 
         """
         if history_name is None:
-            history_name = self.config.get("history_name", f"SABER {self.current_date}")
+            history_name = self.history_name
         # Delete older histories to ensure there's enough free space
         self.purge_histories()
 
@@ -283,7 +309,9 @@ class GalaxyTest:
         return s.strip()
 
     def purge_histories(self, purge_new: bool = True, purge_old: bool = True) -> None:
-        """Purge histories with the same names used during tests or older than 1 week.
+        """Purge histories with the same names used during tests or older.
+
+        Histories deletion times can be configured (in days) throgh config, under the key `delete_after`
 
         Args:
             purge_new (bool, optional): Defaults True - purges all histories with test name
@@ -292,7 +320,7 @@ class GalaxyTest:
         """
         if self.history_client is not None:
             for history in self.history_client.get_histories():
-                if self.config.get("history_name") == history["name"] and purge_new:
+                if self.history_name == history["name"] and purge_new:
                     self.logger.info(
                         f"Purging History, ID: {history['id']}, Name: {history['name']}"
                     )
@@ -306,9 +334,9 @@ class GalaxyTest:
                         create_time["create_time"], "%Y-%m-%dT%H:%M:%S.%f"
                     )
                 ) > timedelta(
-                    hours=36
+                    days=self.delete_after
                 ) and purge_old:  # TODO: add retention time to yaml config
-                    config_clean = self._clean_string(self.config.get("history_name"))
+                    config_clean = self._clean_string(self.history_name)
                     history_clean = self._clean_string(history.get("name"))
                     if config_clean in history_clean:
                         self.logger.info(
@@ -329,13 +357,13 @@ class GalaxyTest:
         """Upload Workflow file to usegalaxy.* instance.
 
         Args:
-            wf_path (str, optional): Path to the workflow file. Defaults to config value.
+            wf_path (str, optional): Path to the workflow file
 
         Raises:
             WFPathError: If no workflow path is provided or path doesn't exist
 
         """
-        wf_path = self.config.get("ga_path", None) if wf_path is None else wf_path
+        wf_path = self.ga_path if wf_path is None else wf_path
         if wf_path is None:
             error_msg = "No workflow path provided in config file."
             raise WFPathError(error_msg)
@@ -343,7 +371,7 @@ class GalaxyTest:
         wf_path = Path(wf_path).expanduser()
 
         if not wf_path.is_absolute():
-            config_path = self.config.get("config_path", None)
+            config_path = self.config_path
             if config_path:
                 c_wf_path = Path(config_path).parent / wf_path
                 c_wf_path = c_wf_path.resolve()
@@ -394,6 +422,9 @@ class GalaxyTest:
     ) -> dict:
         """Monitor the status of a job invocation.
 
+        This method checks the status of jobs in a workflow invocation  with a helper function that stops being iterated when it return true.
+        When wait_for_inv is not None, it waits for all jobs of a single invocation to simply start.
+
         Args:
             invocation_id (str): The ID of the workflow invocation to monitor
             timeout (int, optional): Maximum time (in seconds) to wait. Defaults to 12000s. It is halfed for initial job start.
@@ -404,9 +435,9 @@ class GalaxyTest:
             None
 
         """
-        sleep_time = self.config["sleep_time"] if sleep_time is None else sleep_time
-        timeout = self.config["timeout"] if timeout is None else timeout
-        pe_list = self.pe_list.copy()
+        sleep_time = self.sleep_time if sleep_time is None else sleep_time
+        timeout = self.timeout if timeout is None else timeout
+        pe_list = self.endpoints.copy()
         terminal_state_job: list[str] = []
 
         def all_jobs_started() -> bool:
@@ -492,10 +523,10 @@ class GalaxyTest:
                 job_completed, timeout, sleep_time, f"Timeout {timeout}s expired."
             )
 
-    def _handle_job_completion(
-        self
-    ) -> dict[dict[dict[list[dict[str, any]]]]]:
-        """Job completion handler. Changes History name in case of failures.
+    def _handle_job_completion(self) -> dict[dict[dict[list[dict[str, any]]]]]:
+        """Job completion handler. Add tags describing failures or other states.
+
+        This method iterates through the jobs in the workflow invocations done for each endpoint, organizes and store the queried results in a dictionary.
 
         Args:
             jobs (list[dict[str, any]]): List of job dictionaries
@@ -505,14 +536,14 @@ class GalaxyTest:
 
         """
         return_values = {}
-        if self.config["name"] not in return_values:
-            return_values[self.config["name"]] = {}
-        for pe in self.pe_list:
+        if self.name not in return_values:
+            return_values[self.name] = {}
+        for pe in self.endpoints:
             self._update_log_context(endpoint=pe)
             compute_id = pe if pe != "None" else "Default"
 
-            if compute_id not in return_values[self.config["name"]]:
-                return_values[self.config["name"]][compute_id] = {}
+            if compute_id not in return_values[self.name]:
+                return_values[self.name][compute_id] = {}
                 for key in [
                     "SUCCESSFUL_JOBS",
                     "RUNNING_JOBS",
@@ -521,12 +552,10 @@ class GalaxyTest:
                     "WAITING_JOBS",
                     "FAILED_JOBS",
                 ]:
-                    return_values[self.config["name"]][compute_id][key] = {}
-
+                    return_values[self.name][compute_id][key] = {}
 
             if self.invocation_ids.get(pe) in self.invocation_ids.values():
                 jobs = self.gi.jobs.get_jobs(invocation_id=self.invocation_ids[pe])
-
 
             for job in jobs:
                 if job:
@@ -538,15 +567,15 @@ class GalaxyTest:
                         self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
                         self.err_tracker = True
                         if job["state"] == "running":
-                            return_values[self.config["name"]][compute_id][
-                                "RUNNING_JOBS"
-                            ][job["id"]] = {
+                            return_values[self.name][compute_id]["RUNNING_JOBS"][
+                                job["id"]
+                            ] = {
                                 "INFO": self.gi.jobs.show_job(job["id"]),
                                 "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
                             }
                         if job["state"] == "new":
-                            return_values[self.config["name"]][compute_id]["NEW_JOBS"][
+                            return_values[self.name][compute_id]["NEW_JOBS"][
                                 job["id"]
                             ] = {
                                 "INFO": self.gi.jobs.show_job(job["id"]),
@@ -554,17 +583,17 @@ class GalaxyTest:
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
                             }
                         if job["state"] == "queued":
-                            return_values[self.config["name"]][compute_id][
-                                "QUEUED_JOBS"
-                            ][job["id"]] = {
+                            return_values[self.name][compute_id]["QUEUED_JOBS"][
+                                job["id"]
+                            ] = {
                                 "INFO": self.gi.jobs.show_job(job["id"]),
                                 "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
                             }
                         if job["state"] == "waiting":
-                            return_values[self.config["name"]][compute_id][
-                                "WAITING_JOBS"
-                            ][job["id"]] = {
+                            return_values[self.name][compute_id]["WAITING_JOBS"][
+                                job["id"]
+                            ] = {
                                 "INFO": self.gi.jobs.show_job(job["id"]),
                                 "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
@@ -576,16 +605,13 @@ class GalaxyTest:
                         self.logger.info(
                             f"         Tool: {self._tool_id_split(job['tool_id'])}"
                         )
-                        return_values[self.config["name"]][compute_id][
-                            "SUCCESSFUL_JOBS"
-                        ][job["id"]] = {
+                        return_values[self.name][compute_id]["SUCCESSFUL_JOBS"][
+                            job["id"]
+                        ] = {
                             "INFO": self.gi.jobs.show_job(job["id"]),
                             "METRICS": self.gi.jobs.get_metrics(job["id"]),
                         }
-                        if (
-                            self.config.get("clean_history", "onsuccess")
-                            == "successful_only"
-                        ):
+                        if self.clean_history == "successful_only":
                             self._delete_job_out(job["id"])
                         else:
                             self._add_tag(job["id"])
@@ -603,7 +629,7 @@ class GalaxyTest:
                         self.logger.info(
                             f"         Tool: {self._tool_id_split(job['tool_id'])}"
                         )
-                        return_values[self.config["name"]][compute_id]["FAILED_JOBS"][
+                        return_values[self.name][compute_id]["FAILED_JOBS"][
                             job["id"]
                         ] = {
                             "INFO": self.gi.jobs.show_job(job["id"]),
@@ -627,8 +653,8 @@ class GalaxyTest:
             dict: Dictionary containing job status information
 
         """
-        timeout = self.config["timeout"] if timeout is None else timeout
-        for pe in self.pe_list:
+        timeout = self.timeout if timeout is None else timeout
+        for pe in self.endpoints:
             self.switch_pulsar(pe)
 
             try:
@@ -666,8 +692,8 @@ class GalaxyTest:
             original_prefs (bool, optional): If True, restores preferences. Defaults to False.
 
         """
-        name = self.config["name"] if name is None else name
-        p_endpoint = self.config["default_compute_id"] if p_endpoint is None else p_endpoint
+        name = self.name if name is None else name
+        p_endpoint = self.default_compute_id if p_endpoint is None else p_endpoint
         prefs = self.user.get("preferences", {}).copy()
         extra_prefs = prefs.get("extra_user_preferences", "{}")
         new_prefs = json.loads(extra_prefs).copy()
@@ -681,7 +707,11 @@ class GalaxyTest:
         if prefs != new_prefs:
             self.logger.info("Updating pulsar endpoint in user preferences")
             self.gi.users.update_user(user_id=self.user["id"], user_data=new_prefs)
-            p_endpoint = new_prefs.get("distributed_compute|remote_resources") if original_prefs else p_endpoint
+            p_endpoint = (
+                new_prefs.get("distributed_compute|remote_resources")
+                if original_prefs
+                else p_endpoint
+            )
             self._update_log_context(endpoint=p_endpoint)
             self.logger.info(
                 f"Switching to pulsar endpoint {p_endpoint} from {name} instance"
@@ -724,7 +754,7 @@ class GalaxyTest:
         - 'onsuccess': Clean up only if no errors occurred
         - 'never': Never clean up
         """
-        clean_his = self.config.get("clean_history", "onsuccess")
+        clean_his = self.clean_history
         if clean_his not in ["never", "always", "onsuccess"]:
             clean_his = "onsuccess"
         bool_logic = (clean_his == "always") or (
@@ -737,6 +767,8 @@ class GalaxyTest:
 
     def _add_tag(self, job_id: str, msg_list: list = None) -> None:
         """Add tags to all outputs of a job.
+
+        This method adds tags containing the Pulsar endpoint name and a optional message.
 
         Args:
             job_id (str): ID of the job to tag
@@ -786,6 +818,32 @@ class GalaxyTest:
                     history_id=self.history["id"], dataset_id=set_id, purge=True
                 )
                 self.logger.info(f"Purging dataset: {set_id}")
+
+    def _load_validated_config(self, configuration: dict) -> dict:
+        """Validate the configuration.
+
+        Raises:
+            ValueError: If any required field is missing in the configuration
+
+        """
+        for key in self.__annotations__:
+            default = getattr(self, key, self.REQUIRED)
+            value = configuration.get(key, default)
+
+            if value is self.REQUIRED:
+                raise ValueError(f"Missing required field: {key}")
+
+            setattr(self, key, value)
+
+        if self.api is None:
+            if self.email is None or self.password is None:
+                raise ValueError(
+                    "API key or email/password must be provided in the configuration."
+                )
+        if len(self.endpoints) < 1:
+            raise ValueError(
+                "At least one endpoint must be provided in the configuration."
+            )
 
 
 class WFPathError(Exception):
