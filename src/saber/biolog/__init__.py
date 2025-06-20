@@ -19,14 +19,6 @@ Classes:
     WFPathError: Exception for workflow path errors
     WFInvocation: Class for handling workflow invocations and results
 
-Example:
-    Basic usage of the CustomLogger:
-
-    >>> from saber.biolog import CustomLogger
-    >>> logger = CustomLogger("my_test")
-    >>> logger.update_log_context("galaxy_main", "pulsar_endpoint_1")
-    >>> logger.info("Starting pipeline n.1")
-
 """
 
 from saber.biolog.logger import CustomLogger

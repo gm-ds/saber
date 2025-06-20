@@ -335,7 +335,7 @@ class GalaxyTest:
                     )
                 ) > timedelta(
                     days=self.delete_after
-                ) and purge_old:  # TODO: add retention time to yaml config
+                ) and purge_old:
                     config_clean = self._clean_string(self.history_name)
                     history_clean = self._clean_string(history.get("name"))
                     if config_clean in history_clean:
