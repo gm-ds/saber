@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Any, Union
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from bioblend import ConnectionError
@@ -16,8 +16,10 @@ from bioblend.galaxy.histories import HistoryClient
 from saber.biolog.loglike import LoggerLike
 from saber.biolog.logger import CustomLogger
 
+
 class JobState(Enum):
     """Enumeration of Galaxy job states."""
+
     OK = "ok"
     ERROR = "error"
     RUNNING = "running"
@@ -28,10 +30,12 @@ class JobState(Enum):
     DISCARDED = "discarded"
     FAILED_METADATA = "failed_metadata"
 
+
 class CleanupPolicy(Enum):
     """History cleanup policies."""
+
     ON_SUCCESS = "onsuccess"
-    ON_FAILURE = "onfailure" 
+    SUCCESSFUL_ONLY = "successful_only"
     NEVER = "never"
     ALWAYS = "always"
 
@@ -39,7 +43,7 @@ class CleanupPolicy(Enum):
 @dataclass
 class GalaxyTesterConfig:
     """Configuration class for Galaxy testing with validation."""
-    
+
     # Required fields
     url: str
     name: str
@@ -47,7 +51,7 @@ class GalaxyTesterConfig:
     endpoints: List[str]
     data_inputs: Dict[str, Dict[str, str]]
     default_compute_id: str
-    
+
     # Optional fields with defaults
     api: Optional[str] = None
     email: Optional[str] = None
@@ -61,6 +65,8 @@ class GalaxyTesterConfig:
     maxwait: int = 12000
     sleep_time: int = 5
     timeout: int = 12000
+    date_string: str = ""
+    date: any = None
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -69,26 +75,35 @@ class GalaxyTesterConfig:
         self._validate_auth_fields()
         self._validate_numeric_fields()
         self._validate_paths()
-    
+
     def _validate_required_fields(self) -> None:
         """Validate that all required fields are provided."""
-        required_fields = ['url', 'name', 'ga_path', 'endpoints', 'data_inputs', 'default_compute_id']
+        required_fields = [
+            "url",
+            "name",
+            "ga_path",
+            "endpoints",
+            "data_inputs",
+            "default_compute_id",
+        ]
         for field_name in required_fields:
             value = getattr(self, field_name)
             if value is None or (isinstance(value, (list, dict)) and not value):
                 raise ValueError(f"Required field '{field_name}' is missing or empty")
-    
+
     def _validate_auth_fields(self) -> None:
         """Validate authentication configuration."""
         has_api = self.api is not None
         has_email_pass = self.email is not None and self.password is not None
-        
+
         if not has_api and not has_email_pass:
-            raise ValueError("Either 'api' key or both 'email' and 'password' must be provided")
-        
+            raise ValueError(
+                "Either 'api' key or both 'email' and 'password' must be provided"
+            )
+
         if has_api and has_email_pass:
             raise ValueError("Provide either 'api' key OR email/password, not both")
-    
+
     def _validate_numeric_fields(self) -> None:
         """Validate numeric field ranges."""
         if self.delete_after < 0:
@@ -101,17 +116,17 @@ class GalaxyTesterConfig:
             raise ValueError("sleep_time must be positive")
         if self.timeout <= 0:
             raise ValueError("timeout must be positive")
-    
+
     def _validate_paths(self) -> None:
         """Validate path fields."""
         if self.ga_path and not isinstance(self.ga_path, (str, Path)):
             raise ValueError("ga_path must be a string or Path object")
-    
+
     def _validate_clean_history(self) -> None:
         """Validate the clean_history policy."""
         valid_policies = [policy.value for policy in CleanupPolicy]
         if self.clean_history not in valid_policies:
-            raise ValueError(f"clean_history must be one of {valid_policies}")
+            self.clean_history = CleanupPolicy.ON_SUCCESS.value
 
 
 class GalaxyTest:
@@ -128,7 +143,10 @@ class GalaxyTest:
     """
 
     def __init__(
-        self, config: dict = None, Logger: LoggerLike = None, **kwargs: dict
+        self,
+        config: Optional[dict[str, Any]] = None,
+        Logger: Optional[LoggerLike] = None,
+        **kwargs: Optional[dict[str, Any]],
     ) -> None:
         """Initializes a bioblend Galaxy instance and sets up configuration for job management.
 
@@ -138,25 +156,24 @@ class GalaxyTest:
             **kwargs (dict): Key-value pairs to be passed instead of config.
 
         Attributes:
-            REQUIRED (object): Sentinel object for required fields
-            api (str): API key for Galaxy instance
-            clean_history (str): History cleanup policy, defaults to "onsuccess"
-            config_path (str): Path to the configuration file
-            data_inputs (dict | object): Input data for the workflow, must be provided
-            default_compute_id (str | object): Default compute endpoint ID, must be provided
-            delete_after (float): Time in days to keep histories before deletion, defaults to 5
-            email (str): Email for Galaxy user, defaults to None
-            endpoints (list | object): List of compute endpoints to test, must be provided
-            ga_path (str | object): Path to the workflow file, must be provided
-            history_name (str): Name for the Galaxy history, defaults to "SABER"
-            local_upload (bool): Whether to use local upload, defaults to True
-            interval (int): Interval between status checks, defaults to 5 seconds
-            maxwait (int): Maximum wait time for uploads, defaults to 12000 seconds
-            name (str | object): Name of the Galaxy instance, must be provided
-            password (str): Password for Galaxy user, defaults to None
-            sleep_time (int): Sleep time between checks, defaults to 5 seconds
-            timeout (int): Maximum time to wait for job completion, defaults to 12000 seconds
-            url (str | object): URL of the Galaxy instance, must be provided
+            config.api (str): API key for Galaxy instance
+            config.clean_history (str): History cleanup policy, defaults to "onsuccess"
+            config.config_path (str): Path to the configuration file
+            config.data_inputs (dict | object): Input data for the workflow, must be provided
+            config.default_compute_id (str | object): Default compute endpoint ID, must be provided
+            config.delete_after (float): Time in days to keep histories before deletion, defaults to 5
+            config.email (str): Email for Galaxy user, defaults to None
+            config.endpoints (list | object): List of compute endpoints to test, must be provided
+            config.ga_path (str | object): Path to the workflow file, must be provided
+            config.history_name (str): Name for the Galaxy history, defaults to "SABER"
+            config.local_upload (bool): Whether to use local upload, defaults to True
+            config.interval (int): Interval between status checks, defaults to 5 seconds
+            config.maxwait (int): Maximum wait time for uploads, defaults to 12000 seconds
+            config.name (str | object): Name of the Galaxy instance, must be provided
+            config.password (str): Password for Galaxy user, defaults to None
+            config.sleep_time (int): Sleep time between checks, defaults to 5 seconds
+            config.timeout (int): Maximum time to wait for job completion, defaults to 12000 seconds
+            config.url (str | object): URL of the Galaxy instance, must be provided
             logger: Logger instance for logging.
             gi: GalaxyInstance object for interacting with the Galaxy server.
             p_endpoint (str): Placeholder for endpoint information.
@@ -213,18 +230,23 @@ class GalaxyTest:
         # Initialize history client
         self.history_client = HistoryClient(self.gi)
 
+        # Delete older histories
+        self.purge_histories()
 
     def _initialize_galaxy_connection(self) -> None:
         """Initialize the Galaxy connection based on authentication method."""
         if self.config.email and self.config.password:
-            self.gi = GalaxyInstance(self.config.url, self.config.email, self.config.password)
+            self.gi = GalaxyInstance(
+                self.config.url, self.config.email, self.config.password
+            )
         else:
             self.gi = GalaxyInstance(self.config.url, self.config.api)
-        
+
         self.user = self.gi.users.get_current_user()
 
-
-    def _update_log_context(self, endpoint: str = None, name: str = None) -> None:
+    def _update_log_context(
+        self, endpoint: Optional[str] = None, name: Optional[str] = None
+    ) -> None:
         """Update the logging context with Galaxy instance and endpoint information.
 
         This method updates the contextual information that gets injected into
@@ -256,7 +278,7 @@ class GalaxyTest:
         inputs_data: Optional[dict] = None,
         maxwait: Optional[int] = None,
         interval: Optional[int] = None,
-        local: Optional[bool] = None,
+        local: Optional[bool] = True,
     ) -> Dict[str, Dict[str, str]]:
         """Sets up new histories and upload workflows.
 
@@ -277,10 +299,10 @@ class GalaxyTest:
             dict: Dictionary containing the workflow inputs
 
         """
-        inputs_data = self.config.data_inputs if inputs_data is None else inputs_data
-        interval = self.config.interval if interval is None else interval
-        maxwait = self.config.maxwait if maxwait is None else maxwait
-        local = self.config.local_upload if local is None else local
+        inputs_data = inputs_data or self.config.data_inputs
+        interval = interval or self.config.interval
+        maxwait = maxwait or self.config.maxwait
+        local = local or self.config.local_upload
 
         if local:
             self.switch_pulsar(self.config.default_compute_id, name=self.config.name)
@@ -310,7 +332,9 @@ class GalaxyTest:
 
         return data
 
-    def _wait_for_dataset(self, maxtime: int = None, interval: int = 5) -> bool:
+    def _wait_for_dataset(
+        self, maxtime: Optional[int] = None, interval: Optional[int] = 5
+    ) -> bool:
         """Wait for dataset upload.
 
         This method iterates a helper function to check if all datasets are in a terminal state.
@@ -323,7 +347,7 @@ class GalaxyTest:
             bool: True if datasets are ready, False if timeout occurred
 
         """
-        maxtime = self.config.maxwait if maxtime is None else maxtime
+        maxtime = maxtime or self.config.maxwait
         dataset_client = datasets.DatasetClient(self.gi)
         all_datasets = dataset_client.get_datasets(history_id=self.history["id"])
 
@@ -339,14 +363,20 @@ class GalaxyTest:
                 dataset_info = dataset_client.show_dataset(dataset_id)
                 state = dataset_info["state"]
 
-                if state in [JobState.OK.value(), JobState.EMPTY.value(), JobState.ERROR.value(), JobState.DISCARDED.value(), JobState.FAILED_METADATA.value()]:
-                    if state != "ok":
+                if state in [
+                    JobState.OK.value,
+                    JobState.EMPTY.value,
+                    JobState.ERROR.value,
+                    JobState.DISCARDED.value,
+                    JobState.FAILED_METADATA.value,
+                ]:
+                    if state != JobState.OK.value:
                         self.logger.warning(
                             f"Dataset {dataset_id} is in terminal state {state}"
                         )
                         self.logger.error(f"Upload of Dataset {dataset_id} failed")
                         return True
-                    if state in [JobState.OK.value(), JobState.EMPTY.value()]:
+                    if state in [JobState.OK.value, JobState.EMPTY.value]:
                         continue
                 self.logger.info(
                     f"Dataset {dataset_id} is in non-terminal state {state}"
@@ -359,7 +389,7 @@ class GalaxyTest:
             check_dataset_ready, maxtime, interval, "Upload time exceeded"
         )
 
-    def _create_history(self, history_name: str = None) -> None:
+    def _create_history(self, history_name: Optional[str] = None) -> None:
         """Create a new History.
 
         Deletes permanently older histories to ensure enough space.
@@ -368,25 +398,22 @@ class GalaxyTest:
             history_name (str, optional): Defaults to "Pulsar Endpoints Test"
 
         """
-        if history_name is None:
-            history_name = self.history_name
-        # Delete older histories to ensure there's enough free space
-        self.purge_histories()
+        history_name = history_name or self.history_name
 
         self.logger.info("Creating History...")
         self.history = self.history_client.create_history(name=history_name)
         self.logger.info(f"         History ID: {self.history['id']}")
 
-    def _safe_delete_history(self, id: str, purge_bool: bool) -> None:
+    def _safe_delete_history(self, id: str, purge: bool) -> None:
         """Safely delete a history, handling immutable histories.
 
         Args:
             id (str): History ID to delete
-            purge_bool (bool): Whether to purge the history
+            purge (bool): Whether to purge the history
 
         """
         try:
-            self.history_client.delete_history(history_id=id, purge=purge_bool)
+            self.history_client.delete_history(history_id=id, purge=purge)
         except ConnectionError as e:
             if "403003" in str(e):
                 self.logger.warning(f"Skipping immutable history: {id}")
@@ -415,45 +442,46 @@ class GalaxyTest:
 
         Args:
             purge_new (bool, optional): Defaults True - purges all histories with test name
-            purge_old (bool, optional): Defaults True - purges ALL histories older than one week
+            purge_old (bool, optional): Defaults True - purges ALL histories older than specified days in the configuration file.
 
         """
-        if self.history_client is not None:
-            for history in self.history_client.get_histories():
-                if self.history_name == history["name"] and purge_new:
-                    self.logger.info(
-                        f"Purging History, ID: {history['id']}, Name: {history['name']}"
-                    )
-                    self._safe_delete_history(history["id"], purge_bool=True)
-                create_time = self.history_client.show_history(
+        if not self.history_client:
+            return
+
+        histories = self.history_client.get_histories()
+        cutoff_date = datetime.today() - timedelta(days=self.config.delete_after)
+        config_clean = self._clean_string(self.history_name)
+
+        for history in histories:
+            history_name = history.get("name", "")
+            if purge_new and self.history_name == history_name:
+                self.logger.info(
+                    f"Purging History, ID: {history['id']}, Name: {history['name']}"
+                )
+                self._safe_delete_history(history["id"], purge=True)
+                continue
+
+            if purge_old:
+                history_details = self.history_client.show_history(
                     history_id=history["id"], keys=["create_time"]
                 )
-                if (
-                    datetime.today()
-                    - datetime.strptime(
-                        create_time["create_time"], "%Y-%m-%dT%H:%M:%S.%f"
-                    )
-                ) > timedelta(
-                    days=self.config.delete_after
-                ) and purge_old:
-                    config_clean = self._clean_string(self.history_name)
-                    history_clean = self._clean_string(history.get("name"))
-                    if config_clean in history_clean:
-                        self.logger.info(
-                            f"Purging History, ID: {history['id']}, Name: {history['name']}"
-                        )
-                        self._safe_delete_history(history["id"], purge_bool=True)
-                        return
-                    history_words = history_clean.split()
-                    for word in history_words:
-                        if config_clean == word:
-                            self.logger.info(
-                                f"Purging History, ID: {history['id']}, Name: {history['name']}"
-                            )
-                            self._safe_delete_history(history["id"], purge_bool=True)
-                            return
+                create_time = datetime.strptime(
+                    history_details["create_time"], "%Y-%m-%dT%H:%M:%S.%f"
+                )
 
-    def _upload_workflow(self, wf_path: str = None) -> None:
+                if create_time < cutoff_date:
+                    history_clean = self._clean_string(history_name)
+
+                    if config_clean in history_clean or any(
+                        config_clean == word for word in history_clean.split()
+                    ):
+                        self.logger.info(
+                            f"Purging old history, ID: {history['id']}, Name: {history['name']}"
+                        )
+                        self._safe_delete_history(history["id"], purge=True)
+                        return
+
+    def _upload_workflow(self, wf_path: Optional[Union[str, Path]] = None) -> None:
         """Upload Workflow file to usegalaxy.* instance.
 
         Args:
@@ -463,41 +491,42 @@ class GalaxyTest:
             WFPathError: If no workflow path is provided or path doesn't exist
 
         """
-        wf_path = self.config.ga_path if wf_path is None else wf_path
-        if wf_path is None:
-            error_msg = "No workflow path provided in config file."
-            raise WFPathError(error_msg)
-
-        wf_path = Path(wf_path).expanduser()
+        wf_path = Path(wf_path or self.config.ga_path).expanduser()
 
         if not wf_path.is_absolute():
-            config_path = self.config.config_path
-            if config_path:
-                c_wf_path = Path(config_path).parent / wf_path
-                c_wf_path = c_wf_path.resolve()
-                if c_wf_path.exists():
-                    wf_path = c_wf_path
-                else:
-                    wd_wf_path = Path.cwd() / wf_path  # Fall back to CWD
-                    wd_wf_path = wd_wf_path.resolve()
-                    if wd_wf_path.exists():
-                        wf_path = wd_wf_path
-            else:
-                wd_path = Path.cwd() / wf_path  # Fall back to CWD
-                wd_path = wd_path.resolve()
-                if wd_path.exists():
-                    wf_path = wd_path
+            wf_path = self._resolve_workflow_path(wf_path)
 
-        if wf_path.exists():
-            self.logger.info(f"Uploading Workflow, local path: {wf_path}")
-            self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
-        else:
-            error_msg = f"Workflow path does not exist: {wf_path}"
-            raise WFPathError(error_msg)
+        if not wf_path.exists():
+            raise WFPathError(f"Workflow path does not exist: {wf_path}")
+
+        self.logger.info(f"Uploading Workflow, local path: {wf_path}")
+        self.wf = self.gi.workflows.import_workflow_from_local_path(str(wf_path))
+
+    def _resolve_workflow_path(self, wf_path: Path) -> Path:
+        """Resolve relative workflow path by checking config directory and CWD.
+
+        Args:
+            wf_path: Relative workflow path.
+
+        Returns:
+            Resolved absolute path.
+        """
+        if self.config.config_path:
+            config_based_path = (
+                Path(self.config.config_path).parent / wf_path
+            ).resolve()
+            if config_based_path.exists():
+                return config_based_path
+
+        cwd_based_path = (Path.cwd() / wf_path).resolve()
+        if cwd_based_path.exists():
+            return cwd_based_path
+
+        return wf_path.resolve()
 
     def purge_workflow(self) -> None:
         """Delete permanently the workflow uploaded for the test."""
-        if self.wf is not None:
+        if self.wf:
             self.gi.workflows.delete_workflow(self.wf["id"])
             self.logger.info(f"Purging Workflow, ID: {self.wf['id']}")
 
@@ -518,15 +547,17 @@ class GalaxyTest:
             return tool_id
 
     def _monitor_job_status(
-        self, timeout: int = None, sleep_time: int = None, wait_for_inv: str = None
-    ) -> dict:
+        self,
+        timeout: Optional[int] = None,
+        sleep_time: Optional[int] = None,
+        wait_for_inv: Optional[str] = None,
+    ) -> None:
         """Monitor the status of a job invocation.
 
         This method checks the status of jobs in a workflow invocation  with a helper function that stops being iterated when it return true.
         When wait_for_inv is not None, it waits for all jobs of a single invocation to simply start.
 
         Args:
-            invocation_id (str): The ID of the workflow invocation to monitor
             timeout (int, optional): Maximum time (in seconds) to wait. Defaults to 12000s. It is halfed for initial job start.
             sleep_time (int, optional): Time between status checks. Defaults to 5s
             wait_for_inv (str, optional): If not None, waits for all jobs to start before checking completion. Defaults to None.
@@ -535,8 +566,8 @@ class GalaxyTest:
             None
 
         """
-        sleep_time = self.config.sleep_time if sleep_time is None else sleep_time
-        timeout = self.config.timeout if timeout is None else timeout
+        sleep_time = sleep_time or self.config.sleep_time
+        timeout = timeout or self.config.timeout
         pe_list = self.config.endpoints.copy()
         terminal_state_job: list[str] = []
 
@@ -563,7 +594,13 @@ class GalaxyTest:
                 self.logger.info(f"    {job_state}    Tool ID: {tool_id}")
 
                 # Continue monitoring
-                if job_state not in ["ok", "error", "running", "queued", "waiting"]:
+                if job_state not in [
+                    JobState.OK.value,
+                    JobState.ERROR.value,
+                    JobState.RUNNING.value,
+                    JobState.QUEUED.value,
+                    JobState.WAITING.value,
+                ]:
                     all_jobs_started = False
 
             return all_jobs_started
@@ -593,10 +630,10 @@ class GalaxyTest:
                         tool_id = self._tool_id_split(current_job.get("tool_id"))
                         self.logger.info(f"    {job_state}    Tool ID: {tool_id}")
                         self._add_tag(current_job["id"])
-                    if job_state in ["ok", "error"]:
+                    if job_state in [JobState.OK.value, JobState.ERROR.value]:
                         terminal_state_job.append(current_job["id"])
                     # Continue monitoring
-                    if job_state not in ["ok", "error"]:
+                    if job_state not in [JobState.OK.value, JobState.ERROR.value]:
                         one_inv_completed = False
                         all_jobs_completed = False
 
@@ -605,7 +642,7 @@ class GalaxyTest:
 
             return all_jobs_completed
 
-        if wait_for_inv is not None:
+        if wait_for_inv:
             self.logger.info(
                 "Waiting until test jobs start before invoking additional ones. Current state:"
             )
@@ -659,14 +696,19 @@ class GalaxyTest:
 
             for job in jobs:
                 if job:
-                    if job["state"] in ["new", "queued", "running", "waiting"]:
+                    if job["state"] in [
+                        JobState.NEW.value,
+                        JobState.QUEUED.value,
+                        JobState.RUNNING.value,
+                        JobState.WAITING.value,
+                    ]:
                         self.logger.info(f"Job {job['id']} reached tool timeout:")
                         self.logger.info(
                             f"         Tool: {self._tool_id_split(job['tool_id'])} Status: {job['state']}"
                         )
                         self._add_tag(job["id"], msg_list=f"saber_{job['state']}")
                         self.err_tracker = True
-                        if job["state"] == "running":
+                        if job["state"] == JobState.RUNNING.value:
                             return_values[self.config.name][compute_id]["RUNNING_JOBS"][
                                 job["id"]
                             ] = {
@@ -674,7 +716,7 @@ class GalaxyTest:
                                 "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
                             }
-                        if job["state"] == "new":
+                        if job["state"] == JobState.NEW.value:
                             return_values[self.config.name][compute_id]["NEW_JOBS"][
                                 job["id"]
                             ] = {
@@ -682,7 +724,7 @@ class GalaxyTest:
                                 "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
                             }
-                        if job["state"] == "queued":
+                        if job["state"] == JobState.QUEUED.value:
                             return_values[self.config.name][compute_id]["QUEUED_JOBS"][
                                 job["id"]
                             ] = {
@@ -690,7 +732,7 @@ class GalaxyTest:
                                 "PROBLEMS": self.gi.jobs.get_common_problems(job["id"]),
                                 "METRICS": self.gi.jobs.get_metrics(job["id"]),
                             }
-                        if job["state"] == "waiting":
+                        if job["state"] == JobState.WAITING.value:
                             return_values[self.config.name][compute_id]["WAITING_JOBS"][
                                 job["id"]
                             ] = {
@@ -700,7 +742,7 @@ class GalaxyTest:
                             }
 
                     # Handle completion
-                    elif job["exit_code"] == 0 or job["state"] == "ok":
+                    elif job["exit_code"] == 0 or job["state"] == JobState.OK.value:
                         self.logger.info(f"Job {job['id']} succeeded:")
                         self.logger.info(
                             f"         Tool: {self._tool_id_split(job['tool_id'])}"
@@ -753,7 +795,7 @@ class GalaxyTest:
             dict: Dictionary containing job status information
 
         """
-        timeout = self.config.timeout if timeout is None else timeout
+        timeout = timeout or self.config.timeout
         for pe in self.config.endpoints:
             self.switch_pulsar(pe)
 
@@ -782,7 +824,10 @@ class GalaxyTest:
         return self._handle_job_completion()
 
     def switch_pulsar(
-        self, p_endpoint: str = None, name: str = None, original_prefs: bool = False
+        self,
+        p_endpoint: Optional[str] = None,
+        name: Optional[str] = None,
+        original_prefs: Optional[bool] = False,
     ) -> None:
         """Switches to a different Pulsar endpoint for processing.
 
@@ -792,8 +837,10 @@ class GalaxyTest:
             original_prefs (bool, optional): If True, restores preferences. Defaults to False.
 
         """
-        name = self.config.name if name is None else name
-        p_endpoint = self.config.default_compute_id if p_endpoint is None else p_endpoint
+        name = name or self.config.name
+        p_endpoint = (
+            self.config.default_compute_id if p_endpoint is None else p_endpoint
+        )
         prefs = self.user.get("preferences", {}).copy()
         extra_prefs = prefs.get("extra_user_preferences", "{}")
         new_prefs = json.loads(extra_prefs).copy()
@@ -854,11 +901,9 @@ class GalaxyTest:
         - 'onsuccess': Clean up only if no errors occurred
         - 'never': Never clean up
         """
-        clean_his = self.config.clean_history
-        if clean_his not in ["never", "always", "onsuccess"]:
-            clean_his = "onsuccess"
-        bool_logic = (clean_his == "always") or (
-            clean_his == "onsuccess" and not self.err_tracker
+        # "successful_only" is the default behavior.
+        bool_logic = (self.config.clean_history == "always") or (
+            self.config.clean_history == "onsuccess" and not self.err_tracker
         )
         if bool_logic:
             self.purge_histories()
