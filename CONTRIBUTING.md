@@ -1,9 +1,8 @@
 # Contributing to SABER
 
-Welcome.
+Welcome!
 
-This is **SABER** — a CLI tool to benchmark Pulsar endpoint reliability.
-If you wanna help out: fixes, features, docs, tests — cool. Let’s keep it tidy.
+If you wanna help out: fixes, features, docs, tests — cool! Let’s keep it tidy
 
 ## How to contribute
 
@@ -32,6 +31,8 @@ If you wanna help out: fixes, features, docs, tests — cool. Let’s keep it ti
 
 5. Do the thing
 
+6. Make a PR **to `dev`**
+
 ## Coding style
 
 * python ≥ 3.10
@@ -46,11 +47,6 @@ Make sure to pass the following checks:
 ruff check .
 ruff format .
 ```
-
-## PR rules
-
-* Always **to `dev`**, never straight to `main`
-* PR from your fork → `dev`
 
 ## Example of google-style docstring
 
