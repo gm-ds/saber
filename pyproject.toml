@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SABER"
+version = "0.1.0"
+description = "Systematic API Benchmark for Pulsar Endpoint Reliability CLI tool"
+authors = [{ name = "Gaetanomaria De Sanctis", email = "gaetanomaria.desanctis@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jinja2 >= 3.1.5",
+    "cryptography >= 44.0.1",
+    "platformdirs >= 4.3.6",
+    "pyyaml >= 6.0.2",
+    "bioblend >= 1.4.0",
+]
+
+[project.optional-dependencies]
+dev = ["ruff"]
+
+[project.scripts]
+saber = "saber._internal.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+extend-select = [
+    "D",
+    "ANN",
+    "TCH",
+]
+
+ignore = [
+    "D100",
+    "D104",
+    "D203",
+    "D213",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
